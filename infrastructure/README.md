@@ -64,7 +64,7 @@
 5. Apply changes:
 
    ```bash
-   tterraform apply "project.out" 
+   terraform apply "project.out" 
    ```
 
 6. Destroy resources when finished:
