@@ -2,7 +2,7 @@
 
 Reference architectures to showcase how users can leverage DigitalOcean's robust cloud platform to build resilient, distributed systems at scale.
 
-<img src="./docs/scale-with-simplicity.png" width="900" height="800" alt="Scale With Simplicity">
+<img src="./docs/scale-with-simplicity.png" width="900" height="700" alt="Scale With Simplicity">
 
 ## Prerequisites
 
