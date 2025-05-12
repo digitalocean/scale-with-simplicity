@@ -1,78 +1,26 @@
-# Scale with Simplicity on DigitalOcean
+# Scale With Simplicty
+This repo contains reference architectures developed by DigitalOcean to allow our users to be able to understand how to leverage DigitalOcean Services to support specific use cases.  Each reference architecture is provided as a Terraform module allowing you to deploy and test to facilitate learning and rapid development. These reference architecture modules leverage our [Terraform Module Library](./TERRAFORM-MODULE-LIBRARY.md) which contain reusable Terraform Modules addressing specific components of the architectures.
 
-Reference architectures to showcase how users can leverage DigitalOcean's robust cloud platform to build resilient, distributed systems at scale.
+**Note**: While these reference architectures are fully functional, they are intended to be used as a reference. Please make sure you validate any of the configuration for your own use case.
 
-<img src="./docs/scale-with-simplicity.png" width="900" height="700" alt="Scale With Simplicity">
+## Reference Architectures
 
-## Prerequisites
+| Name                                                                                               | Use Case                                                                                                                            |
+|----------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|
+| [Globally Load Balanced Web Servers](./reference-architectures/globally-load-balanced-web-servers) | Load balanced web servers deployed into multiple regions with a global load balancer directing users to the region closest to them. |
 
-- [Terraform](https://www.terraform.io/downloads.html) installed on your machine
-- [DigitalOcean Account](https://cloud.digitalocean.com/registrations/new) - Sign up here
-- [DigitalOcean API Token](https://cloud.digitalocean.com/account/api/tokens)
+## How to Deploy
+A typical way to deploy for testing purposes would be to:
 
-## Setup
+- Ensure you have your DigitalOcean [Personal Access Token](https://docs.digitalocean.com/reference/api/create-personal-access-token/) set in the `DIGITALOCEAN_TOKEN` environment variable.
+- Clone the repo
+- cd into the `terraform` directory within the reference architecture you want to test
+- Create a `tfvars` file with the inputs needed for the reference architecture module.
+- run `terrafrom init`
+- run `terrafrom plan -var-file <path to tfvars file>`
+- run `terrafrom apply -var-file <path to tfvars file>`
+- Test
+- run `terrafrom destroy -var-file <path to tfvars file>`
 
-1. Clone this repository
-
-   ```bash
-   git clone https://github.com/digitalocean/scale-with-simplicity.git
-   cd infrastructure
-   ```
-
-2. Create a `project.tfvars` file with your DigitalOcean API token:
-
-   ```bash
-   cp project.tfvars.example project.tfvars
-   # Add your DO TOKEN
-   do_token = "your-digitalocean-api-token"
-   ```
-
-   Note: Never commit this file to version control!
-
-## Usage
-
-1. Initialize Terraform:
-
-   ```bash
-   terraform init
-   ```
-
-2. Review the planned changes:
-
-   ```bash
-   terraform plan -var-file=project.tfvars -out project.out
-   ```
-
-3. Apply the changes:
-
-   ```bash
-   terraform apply "project.out"   
-   ```
-
-4. To destroy the infrastructure:
-
-   ```bash
-   terraform destroy -var-file="project.tfvars" 
-   ```
-
-## Project Structure
-
-```bash
-├── infrastructure/              # Terraform infrastructure code
-│   ├── main.tf                  # Main architecture configuration
-│   ├── variables.tf             # Architecture variables
-│   ├── outputs.tf               # Terraform outputs
-│   ├── provider.tf              # Provider configuration (DigitalOcean)
-│   ├── vpc.tf                   # VPC configuration
-│   ├── postgres.tf              # PostgreSQL database configuration
-│   ├── spaces.tf                # DigitalOcean Spaces configuration
-│   └── project.tfvars.example   # Example project variables file
-```
-
-## Security Notes
-
-- Never commit your `project.tfvars` file or any files containing sensitive information
-- Keep your DigitalOcean API token secure.
-- Review the planned infrasture changes before applying them.
-
+If you wish to use the reference architecture as a basis for your own deployment, it's recommended to copy the Terraform files to your own repo and customize them for your needs.
 
