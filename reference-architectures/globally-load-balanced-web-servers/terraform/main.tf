@@ -59,7 +59,7 @@ module "glb_stack" {
 # This is optional for our unit testing purposes
 data "digitalocean_ssh_key" "default" {
   count = var.ssh_key != null ? 1 : 0
-  name = var.ssh_key
+  name  = var.ssh_key
 }
 
 locals {
