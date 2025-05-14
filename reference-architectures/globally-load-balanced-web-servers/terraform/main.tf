@@ -1,20 +1,20 @@
 module "multi_region_vpc" {
   source      = "github.com/digitalocean/terraform-digitalocean-multi-region-vpc"
   name_prefix = var.name_prefix
-  vpcs = var.vpcs
+  vpcs        = var.vpcs
 }
 
 resource "digitalocean_certificate" "cert" {
-  count    = var.tls ? 1 : 0
+  count   = var.tls ? 1 : 0
   name    = var.name_prefix
   type    = "lets_encrypt"
   domains = [var.domain, "*.${var.domain}"]
 }
 
 module "glb_stack" {
-  source = "github.com/digitalocean/terraform-digitalocean-glb-stack"
-  name_prefix = var.name_prefix
-  vpcs = [for vpc in values(module.multi_region_vpc.vpc_details) : { region = vpc.region, vpc_uuid = vpc.id }]
+  source             = "github.com/digitalocean/terraform-digitalocean-glb-stack"
+  name_prefix        = var.name_prefix
+  vpcs               = [for vpc in values(module.multi_region_vpc.vpc_details) : { region = vpc.region, vpc_uuid = vpc.id }]
   region_dns_records = true
   regional_lb_config = {
     redirect_http_to_https = var.tls
@@ -22,14 +22,14 @@ module "glb_stack" {
       certificate_name = var.tls ? digitalocean_certificate.cert[0].name : null
       entry_port       = var.tls ? 443 : 80
       entry_protocol   = var.tls ? "https" : "http"
-      target_port     = 80
-      target_protocol = "http"
+      target_port      = 80
+      target_protocol  = "http"
     }
 
     healthcheck = {
       port     = 80
       protocol = "http"
-      path = "/"
+      path     = "/"
     }
 
     droplet_tag = var.name_prefix
@@ -51,7 +51,7 @@ module "glb_stack" {
     healthcheck = {
       port     = var.tls ? 443 : 80
       protocol = var.tls ? "https" : "http"
-      path = "/"
+      path     = "/"
     }
   }
 }
@@ -65,13 +65,13 @@ locals {
     for pair in flatten([
       for vpc in values(module.multi_region_vpc.vpc_details) : [
         for i in range(var.droplet_count) : {
-          key       = "${vpc.region}-${i + 1}"
-          region    = vpc.region
-          vpc_uuid  = vpc.id
-          droplet   = i
+          key      = "${vpc.region}-${i + 1}"
+          region   = vpc.region
+          vpc_uuid = vpc.id
+          droplet  = i
         }
       ]
-    ]) : pair.key => {
+      ]) : pair.key => {
       region   = pair.region
       vpc_uuid = pair.vpc_uuid
       droplet  = pair.droplet

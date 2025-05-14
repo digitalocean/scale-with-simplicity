@@ -1,6 +1,6 @@
 output "glb_fqdn" {
   description = "URL "
-  value = var.domain
+  value       = var.domain
 }
 
 output "rlb_fqdns" {

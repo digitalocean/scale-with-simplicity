@@ -11,7 +11,7 @@ variable "name_prefix" {
 variable "tls" {
   description = "If set to true will create an LetsEncrypt SSL cert and configure LBs to use TLS"
   type        = bool
-  default = true
+  default     = true
 }
 
 variable "ssh_key" {
@@ -22,7 +22,7 @@ variable "ssh_key" {
 variable "droplet_count" {
   description = "number of droplets in each region"
   type        = number
-  default = 1
+  default     = 1
 }
 
 variable "droplet_size" {
