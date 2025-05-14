@@ -1,5 +1,5 @@
 module "multi_region_vpc" {
-  source      = "git@github.com:digitalocean/terraform-digitalocean-multi-region-vpc.git"
+  source      = "github.com/digitalocean/terraform-digitalocean-multi-region-vpc"
   name_prefix = var.name_prefix
   vpcs = var.vpcs
 }
@@ -12,7 +12,7 @@ resource "digitalocean_certificate" "cert" {
 }
 
 module "glb_stack" {
-  source = "git@github.com:digitalocean/terraform-digitalocean-glb-stack.git"
+  source = "github.com/digitalocean/terraform-digitalocean-glb-stack"
   name_prefix = var.name_prefix
   vpcs = [for vpc in values(module.multi_region_vpc.vpc_details) : { region = vpc.region, vpc_uuid = vpc.id }]
   region_dns_records = true
