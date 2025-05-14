@@ -56,7 +56,9 @@ module "glb_stack" {
   }
 }
 
+# This is optional for our unit testing purposes
 data "digitalocean_ssh_key" "default" {
+  count = var.ssh_key != null ? 1 : 0
   name = var.ssh_key
 }
 
@@ -87,7 +89,8 @@ resource "digitalocean_droplet" "web" {
   image    = var.droplet_image
   region   = each.value.region
   vpc_uuid = each.value.vpc_uuid
-  ssh_keys = [data.digitalocean_ssh_key.default.fingerprint]
+  # Set as option for our unit testing purposes
+  ssh_keys = var.ssh_key != null ? [data.digitalocean_ssh_key.default[0].fingerprint] : []
 
   user_data = <<-EOF
     #!/bin/bash

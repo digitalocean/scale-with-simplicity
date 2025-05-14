@@ -17,6 +17,8 @@ variable "tls" {
 variable "ssh_key" {
   description = "Name of an existing SSH Key that will be used to access the Droplet."
   type        = string
+  # In most cases this would only be null for testing purposes.
+  default     = null
 }
 
 variable "droplet_count" {
