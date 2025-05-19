@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/gruntwork-io/terratest/modules/files"
 	http_helper "github.com/gruntwork-io/terratest/modules/http-helper"
+	"github.com/gruntwork-io/terratest/modules/random"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 
 func TestDeployAndDestroy(t *testing.T) {
 	t.Parallel()
+	testNamePrefix := random.UniqueId()
 	testDir := test_structure.CopyTerraformFolderToTemp(t, "../..", "./terraform")
 	err := files.CopyFile("../test.tfvars", filepath.Join(testDir, "test.tfvars"))
 	if err != nil {
@@ -23,7 +25,7 @@ func TestDeployAndDestroy(t *testing.T) {
 
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: testDir,
-		VarFiles:     []string{"test.tfvars"},
+		MixedVars:    []terraform.Var{terraform.VarFile("test.tfvars"), terraform.VarInline("name_prefix", testNamePrefix)},
 		NoColor:      true,
 	})
 	defer func() {
