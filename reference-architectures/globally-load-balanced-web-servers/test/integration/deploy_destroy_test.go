@@ -2,6 +2,8 @@ package integration
 
 import (
 	"fmt"
+	"github.com/digitalocean/scale-with-simplicity/test/constant"
+	"github.com/digitalocean/scale-with-simplicity/test/helper"
 	"github.com/gruntwork-io/terratest/modules/files"
 	http_helper "github.com/gruntwork-io/terratest/modules/http-helper"
 	"github.com/gruntwork-io/terratest/modules/random"
@@ -23,26 +25,15 @@ func TestDeployAndDestroy(t *testing.T) {
 		t.Fatalf("Failed to copy tfvars file: %v", err)
 	}
 
+	client := helper.CreateGodoClient()
+	helper.CreateTestDomain(client, constant.TestRootSubdomain, testNamePrefix)
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: testDir,
-		MixedVars:    []terraform.Var{terraform.VarFile("test.tfvars"), terraform.VarInline("name_prefix", testNamePrefix)},
+		MixedVars:    []terraform.Var{terraform.VarFile("test.tfvars"), terraform.VarInline("name_prefix", testNamePrefix), terraform.VarInline("domain", constant.TestRootSubdomain)},
 		NoColor:      true,
 	})
-	defer func() {
-		t.Log("Starting Terraform destroy...")
-
-		if _, err := terraform.DestroyE(t, terraformOptions); err != nil {
-			if strings.Contains(err.Error(), "Can not delete VPC with members") {
-				t.Logf("VPC not ready to delete, retrying after delay...")
-				time.Sleep(60 * time.Second)
-
-				// Retry with fatal failure if it still doesn't work
-				terraform.Destroy(t, terraformOptions)
-			} else {
-				t.Fatalf("Failed to destroy resources: %v", err)
-			}
-		}
-	}()
+	defer helper.TerraformDestroyVpcWithMembers(t, terraformOptions)
+	defer helper.DeleteTestDomain(client, constant.TestRootSubdomain, testNamePrefix)
 
 	terraform.InitAndApply(t, terraformOptions)
 

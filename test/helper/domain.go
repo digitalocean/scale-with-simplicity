@@ -1,4 +1,4 @@
-package helpers
+package helper
 
 import (
 	"context"
@@ -54,4 +54,5 @@ func DeleteTestDomain(client *godo.Client, parentFqdn, testDomainName string) {
 			log.Panicf("Failed to delete NS record %d for domain %s: %v", record.ID, testDomainFqdn, err)
 		}
 	}
+	log.Printf("Successfully deleted NS records in %s", parentFqdn)
 }
