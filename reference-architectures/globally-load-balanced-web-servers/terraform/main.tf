@@ -90,7 +90,7 @@ resource "digitalocean_droplet" "web" {
   region   = each.value.region
   vpc_uuid = each.value.vpc_uuid
   # Set as option for our unit testing purposes
-  ssh_keys = var.ssh_key != null ? [data.digitalocean_ssh_key.default[0].fingerprint] : []
+  ssh_keys = var.ssh_key != null ? [data.digitalocean_ssh_key.default[0].id] : []
 
   user_data = <<-EOF
     #!/bin/bash

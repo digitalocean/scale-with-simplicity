@@ -3,6 +3,7 @@ module github.com/digitalocean/scale-with-simplicity/test
 go 1.24.2
 
 require (
+	github.com/charmbracelet/keygen v0.5.3
 	github.com/digitalocean/godo v1.148.0
 	github.com/gruntwork-io/terratest v0.49.0
 )
