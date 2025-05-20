@@ -2,8 +2,8 @@ package integration
 
 import (
 	"github.com/digitalocean/godo"
+	"github.com/digitalocean/scale-with-simplicity/reference-architectures/globally-load-balanced-web-servers/test/helpers"
 	"github.com/gruntwork-io/terratest/modules/random"
-	"helpers/helpers"
 	"os"
 	"testing"
 )
