@@ -7,7 +7,7 @@ import (
 	"log"
 )
 
-func CreateTestDomain(client *godo.Client, parentFqdn, testDomainName string) {
+func CreateTestDomain(client *godo.Client, parentFqdn, testDomainName string) string {
 	testDomainFqdn := fmt.Sprintf("%s.%s", testDomainName, parentFqdn)
 	domainCreateRequest := &godo.DomainCreateRequest{Name: testDomainFqdn}
 	ctx := context.TODO()
@@ -32,6 +32,7 @@ func CreateTestDomain(client *godo.Client, parentFqdn, testDomainName string) {
 		}
 	}
 	log.Printf("Successfully created NS records in %s", parentFqdn)
+	return testDomainFqdn
 }
 
 func DeleteTestDomain(client *godo.Client, parentFqdn, testDomainName string) {

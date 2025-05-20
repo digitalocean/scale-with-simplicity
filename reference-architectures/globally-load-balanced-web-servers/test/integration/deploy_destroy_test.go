@@ -18,7 +18,7 @@ import (
 
 func TestDeployAndDestroy(t *testing.T) {
 	t.Parallel()
-	testNamePrefix := random.UniqueId()
+	testNamePrefix := strings.ToLower(random.UniqueId())
 	testDir := test_structure.CopyTerraformFolderToTemp(t, "../..", "./terraform")
 	err := files.CopyFile("../test.tfvars", filepath.Join(testDir, "test.tfvars"))
 	if err != nil {
@@ -26,10 +26,10 @@ func TestDeployAndDestroy(t *testing.T) {
 	}
 
 	client := helper.CreateGodoClient()
-	helper.CreateTestDomain(client, constant.TestRootSubdomain, testNamePrefix)
+	testDomainFqdn := helper.CreateTestDomain(client, constant.TestRootSubdomain, testNamePrefix)
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: testDir,
-		MixedVars:    []terraform.Var{terraform.VarFile("test.tfvars"), terraform.VarInline("name_prefix", testNamePrefix), terraform.VarInline("domain", constant.TestRootSubdomain)},
+		MixedVars:    []terraform.Var{terraform.VarFile("test.tfvars"), terraform.VarInline("name_prefix", testNamePrefix), terraform.VarInline("domain", testDomainFqdn)},
 		NoColor:      true,
 	})
 	defer helper.TerraformDestroyVpcWithMembers(t, terraformOptions)
