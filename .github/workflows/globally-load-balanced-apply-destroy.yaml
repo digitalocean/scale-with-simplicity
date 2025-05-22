@@ -1,0 +1,27 @@
+name: globally-load-balanced-web-servers Apply-Destroy
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  apply-destroy:
+    runs-on: ubuntu-latest
+    env:
+      DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.TEST_DIGITALOCEAN_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: use-tf-module-library
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+      - name: Install Terraform
+        run: |
+          TF_VERSION="1.11.4"; apt-get update && sudo apt-get install -y wget unzip
+          wget https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip
+          unzip terraform_${TF_VERSION}_linux_amd64.zip && sudo mv terraform /usr/local/bin
+      - name: Run tests
+        working-directory: ${{ inputs.module_path }}/test/integration
+        run: |
+          if [ -d "." ]; then go test ./...; else echo "No tests"; fi
