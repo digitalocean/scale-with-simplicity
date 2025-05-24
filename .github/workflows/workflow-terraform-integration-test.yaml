@@ -6,12 +6,15 @@ on:
       module_path:
         required: true
         type: string
+    secrets:
+      DIGITALOCEAN_ACCESS_TOKEN:
+        required: true
 
 jobs:
   integration-test:
     runs-on: ubuntu-latest
     env:
-      DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.TEST_DIGITALOCEAN_ACCESS_TOKEN }}
+      DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
