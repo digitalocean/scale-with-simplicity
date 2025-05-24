@@ -9,3 +9,5 @@ jobs:
     uses: ./.github/workflows/workflow-terraform-integration-test.yaml
     with:
       module_path: reference-architectures/globally-load-balanced-web-servers
+    secrets:
+      TEST_DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.TEST_DIGITALOCEAN_ACCESS_TOKEN }}
