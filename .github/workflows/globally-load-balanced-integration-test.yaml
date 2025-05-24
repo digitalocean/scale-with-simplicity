@@ -1,0 +1,11 @@
+name: globally-load-balanced-web-servers Apply-Destroy
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  call-common:
+    uses: ./.github/workflows/globally-load-balanced-integration-test.yaml
+    with:
+      module_path: reference-architectures/globally-load-balanced-web-servers
