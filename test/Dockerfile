@@ -1,15 +1,14 @@
-FROM golang:1.24-bullseye
+FROM golang:1.24-alpine
 
 # Install essential tools
-RUN apt-get update && apt-get install -y \
+RUN apk add --no-cache \
     make \
     unzip \
     wget \
     curl \
     git \
     ca-certificates \
- && apt-get clean \
- && rm -rf /var/lib/apt/lists/*
+    bash
 
 # Install Terraform
 ARG TERRAFORM_VERSION=1.11.4
