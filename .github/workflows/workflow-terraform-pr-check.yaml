@@ -6,55 +6,38 @@ on:
       module_path:
         required: true
         type: string
+    secrets:
+      DIGITALOCEAN_ACCESS_TOKEN:
+        required: true
+
 
 jobs:
-  validate:
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
-    container: hashicorp/terraform:1.11
+    container:
+      image: registry.digitalocean.com/scale-with-simplicity-test/terraform-test:latest
+      credentials:
+        username: solutions@digitalocean.com
+        password: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
-      - name: Init & Validate
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Run linting
         working-directory: ${{ inputs.module_path }}
-        run: |
-          terraform init -backend=false
-          terraform validate
-          terraform fmt -check -recursive
-
-  tflint:
-    runs-on: ubuntu-latest
-    container: ghcr.io/terraform-linters/tflint
-    steps:
-      - uses: actions/checkout@v4
-      - name: Write TFLint config
-        working-directory: ${{ inputs.module_path }}
-        run: |
-          cat <<EOF > .tflint.hcl
-          plugin "terraform" {
-            enabled = true
-            preset  = "all"
-          }
-          EOF
-
-      - name: Run TFLint
-        working-directory: ${{ inputs.module_path }}
-        run: |
-          tflint --init
-          tflint
+        run: make lint
 
   terratest:
-    needs: validate
+    name: Terratest Unit Tests
     runs-on: ubuntu-latest
+    container:
+      image: registry.digitalocean.com/scale-with-simplicity-test/terraform-test:latest
+      credentials:
+        username: solutions@digitalocean.com
+        password: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.24"
-      - name: Install Terraform
-        run: |
-          TF_VERSION="1.11.4"; apt-get update && sudo apt-get install -y wget unzip
-          wget https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip
-          unzip terraform_${TF_VERSION}_linux_amd64.zip && sudo mv terraform /usr/local/bin
-      - name: Run tests
-        working-directory: ${{ inputs.module_path }}/test/unit
-        run: |
-          if [ -d "." ]; then go test ./...; else echo "No tests"; fi
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Unit Tests
+        working-directory: ${{ inputs.module_path }}
+        run: make test-unit

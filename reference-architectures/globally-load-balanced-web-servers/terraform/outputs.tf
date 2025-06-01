@@ -1,9 +1,10 @@
 output "glb_fqdn" {
-  description = "URL "
+  description = "FQDN of the GLB used for testing"
   value       = var.domain
 }
 
 output "rlb_fqdns" {
-  value = [for vpc in var.vpcs : "${vpc.region}.${var.domain}"]
+  description = "List fo FQDNs of RLBs used for testing"
+  value       = [for vpc in var.vpcs : "${vpc.region}.${var.domain}"]
 }
 

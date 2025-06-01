@@ -10,3 +10,5 @@ jobs:
     uses: ./.github/workflows/workflow-terraform-pr-check.yaml
     with:
       module_path: reference-architectures/globally-load-balanced-web-servers
+    secrets:
+      DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.TEST_DIGITALOCEAN_ACCESS_TOKEN }}

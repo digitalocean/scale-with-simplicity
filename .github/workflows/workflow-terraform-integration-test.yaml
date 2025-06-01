@@ -11,21 +11,19 @@ on:
         required: true
 
 jobs:
-  integration-test:
+  terratest:
+    name: Terratest Integration Tests
     runs-on: ubuntu-latest
+    container:
+      image: registry.digitalocean.com/scale-with-simplicity-test/terraform-test:latest
+      credentials:
+        username: solutions@digitalocean.com
+        password: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
     env:
       DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.24"
-      - name: Install Terraform
-        run: |
-          TF_VERSION="1.11.4"; apt-get update && sudo apt-get install -y wget unzip
-          wget https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip
-          unzip terraform_${TF_VERSION}_linux_amd64.zip && sudo mv terraform /usr/local/bin
-      - name: Run tests
-        working-directory: ${{ inputs.module_path }}/test/integration
-        run: |
-          if [ -d "." ]; then go test ./...; else echo "No tests"; fi
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Integration Tests
+        working-directory: ${{ inputs.module_path }}
+        run: make test-integration

@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-func TestDeployAndDestroy(t *testing.T) {
+func TestApplyAndDestroy(t *testing.T) {
 	t.Parallel()
 	testNamePrefix := strings.ToLower(random.UniqueId())
 	testDir := test_structure.CopyTerraformFolderToTemp(t, "../..", "./terraform")
