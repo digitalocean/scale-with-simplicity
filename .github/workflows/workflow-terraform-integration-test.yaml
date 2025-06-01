@@ -18,7 +18,7 @@ jobs:
       image: registry.digitalocean.com/scale-with-simplicity-test/terraform-test:latest
       credentials:
         username: solutions@digitalocean.com
-        password: ${{ secrets.TEST_DIGITALOCEAN_ACCESS_TOKEN }}
+        password: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
     env:
       DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
     steps:
