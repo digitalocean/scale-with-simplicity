@@ -1,0 +1,9 @@
+name_prefix = "vpn-test"
+do_region = "nyc3"
+droplet_size  = "s-1vcpu-2gb"
+droplet_image = "ubuntu-20-04-x64"
+droplet_ssh_keys = [46093502]
+aws_region = "us-east-2"
+aws_vpc_cidr = "192.168.100.0/24"
+do_vpc_cidr = "10.0.0.0/22"
+vpn_psk = "IvDyI4_phUZ1i2Rg"
