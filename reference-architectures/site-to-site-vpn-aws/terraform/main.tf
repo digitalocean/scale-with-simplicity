@@ -31,10 +31,56 @@ module "aws_vpc" {
   private_subnets = [var.aws_vpc_cidr]
   enable_vpn_gateway = true
   tags = local.aws_tags
+  propagate_private_route_tables_vgw = true
+}
+
+data "aws_ami" "amazon_linux_arm" {
+  most_recent = true
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-hvm-*-arm64-gp2"] # Amazon Linux 2 ARM64
+  }
+  filter {
+    name   = "architecture"
+    values = ["arm64"]
+  }
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+  owners = ["137112412989"] # Amazon
+}
+
+resource "aws_security_group" "allow_ping" {
+  name        = "${var.name_prefix}-allow-ping"
+  description = "Allow ICMP ping from anywhere"
+  vpc_id      = module.aws_vpc.vpc_id
+  ingress {
+    description = "Allow ICMP ping"
+    from_port   = -1
+    to_port     = -1
+    protocol    = "icmp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  tags = local.aws_tags
+}
+
+resource "aws_instance" "t4g_nano" {
+  ami           = data.aws_ami.amazon_linux_arm.id
+  instance_type = "t4g.nano"
+  subnet_id                   = module.aws_vpc.private_subnets[0]
+  vpc_security_group_ids = [aws_security_group.allow_ping.id]
+  tags = local.aws_tags
 }
 
 resource "aws_customer_gateway" "gateway" {
-  # device_name = local.vgw_droplet_name
+  # device_name = "${var.name_prefix}-vgw"
   bgp_asn    = 65000
   ip_address = digitalocean_reserved_ip.vpn_gateway.ip_address
   type       = "ipsec.1"
@@ -66,6 +112,7 @@ module "do_vpn_droplet" {
   name          = "${var.name_prefix}-vgw"
   region        = var.do_region
   remote_vpn_ip = module.vpn_gateway.vpn_connection_tunnel1_address
+  remote_vpn_cidr = module.aws_vpc.vpc_cidr_block
   reserved_ip   = digitalocean_reserved_ip.vpn_gateway.ip_address
   size          = var.droplet_size
   vpc_id        = digitalocean_vpc.vpn.id
