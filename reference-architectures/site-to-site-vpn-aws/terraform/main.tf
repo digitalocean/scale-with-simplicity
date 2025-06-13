@@ -80,7 +80,7 @@ resource "aws_instance" "t4g_nano" {
 }
 
 resource "aws_customer_gateway" "gateway" {
-  # device_name = "${var.name_prefix}-vgw"
+  device_name = "${var.name_prefix}-vgw"
   bgp_asn    = 65000
   ip_address = digitalocean_reserved_ip.vpn_gateway.ip_address
   type       = "ipsec.1"
@@ -111,9 +111,11 @@ module "do_vpn_droplet" {
   image         = var.droplet_image
   name          = "${var.name_prefix}-vgw"
   region        = var.do_region
-  remote_vpn_ip = module.vpn_gateway.vpn_connection_tunnel1_address
+  do_vpn_public_ip   = digitalocean_reserved_ip.vpn_gateway.ip_address
+  do_vpn_tunnel_ip = module.vpn_gateway.vpn_connection_tunnel1_cgw_inside_address
+  remote_vpn_public_ip = module.vpn_gateway.vpn_connection_tunnel1_address
+  remote_vpn_tunnel_ip = module.vpn_gateway.vpn_connection_tunnel1_vgw_inside_address
   remote_vpn_cidr = module.aws_vpc.vpc_cidr_block
-  reserved_ip   = digitalocean_reserved_ip.vpn_gateway.ip_address
   size          = var.droplet_size
   vpc_id        = digitalocean_vpc.vpn.id
   vpn_psk       = var.vpn_psk
