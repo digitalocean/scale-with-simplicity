@@ -173,3 +173,8 @@ module "vpn_gateway" {
   tunnel2_preshared_key = var.vpn_psk
   tags                  = local.aws_tags
 }
+
+resource "aws_vpn_connection_route" "doks_route" {
+  destination_cidr_block = digitalocean_kubernetes_cluster.vpn_test.cluster_subnet
+  vpn_connection_id      = module.vpn_gateway.vpn_connection_id
+}
