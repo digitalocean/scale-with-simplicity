@@ -45,7 +45,10 @@ variable "do_vpc_cidr" {
 }
 
 variable "vpn_psk" {
-  description = "Pre-shared key to use for the VPN connection"
+  description = "Pre-shared key to use for the AWS Site-to-Site VPN connection. Must be 8 to 64 characters, and contain only alphanumeric characters, dots (.), or underscores (_), as required by AWS."
   type        = string
-  # Validation 8 to 64 characters, only include . _
+  validation {
+    condition     = can(regex("^[a-zA-Z0-9._]{8,64}$", var.vpn_psk))
+    error_message = "The vpn_psk must be 8 to 64 characters and contain only letters, numbers, dots (.), or underscores (_), per AWS Site-to-Site VPN requirements."
+  }
 }
