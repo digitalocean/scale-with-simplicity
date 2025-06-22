@@ -11,4 +11,6 @@ jobs:
     with:
       module_path: reference-architectures/site-to-site-vpn-aws
     secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.SOLUTIONS_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.SOLUTIONS_AWS_SECRET_ACCESS_KEY }}
       DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.TEST_DIGITALOCEAN_ACCESS_TOKEN }}
