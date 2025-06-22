@@ -44,26 +44,27 @@ Assuming you have doctl, helm and kubectl installed you can copy the command out
 
 ### Inputs
 
-| Name               | Description                                                                                                       | Type           | Default | Required |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------- | -------------- | ------- | -------- |
-| `name_prefix`      | Name prefix to use for all resources created by this module                                                       | `string`       | —       | yes      |
-| `do_region`        | DO region slug for the region the droplet will be deployed into                                                   | `string`       | —       | yes      |
-| `droplet_size`     | DO size slug used for the droplet                                                                                 | `string`       | —       | yes      |
-| `droplet_image`    | DO image slug to run on the droplet, must be Ubuntu-based                                                         | `string`       | —       | yes      |
-| `droplet_ssh_keys` | A list of SSH key IDs or fingerprints to enable on the droplet                                                    | `list(number)` | `[]`    | no       |
-| `do_vpc_cidr`      | CIDR to use for the DO VPC                                                                                        | `string`       | —       | yes      |
-| `aws_region`       | AWS Region ID in which the AWS VPC will be created                                                                | `string`       | —       | yes      |
-| `aws_vpc_cidr`     | CIDR to use for the AWS VPC                                                                                       | `string`       | —       | yes      |
-| `vpn_psk`          | Pre-shared key to use for the AWS Site-to-Site VPN connection (8–64 alphanumeric, `.`, or `_` as required by AWS) | `string`       | —       | yes      |
+| Name                  | Description                                                                                                       | Type           | Default | Required |
+|-----------------------|-------------------------------------------------------------------------------------------------------------------|----------------|---------|----------|
+| `name_prefix`         | Name prefix to use for all resources created by this module                                                       | `string`       | —       | yes      |
+| `do_region`           | DO region slug for the region the droplet will be deployed into                                                   | `string`       | —       | yes      |
+| `droplet_size`        | DO size slug used for the droplet                                                                                 | `string`       | —       | yes      |
+| `droplet_image`       | DO image slug to run on the droplet, must be Ubuntu-based                                                         | `string`       | —       | yes      |
+| `droplet_ssh_keys`    | A list of SSH key IDs or fingerprints to enable on the droplet                                                    | `list(number)` | `[]`    | no       |
+| `do_vpc_cidr`         | CIDR to use for the DO VPC                                                                                        | `string`       | —       | yes      |
+| `doks_cluster_subnet` | CIDR for the DOKS Cluster Subnet                                                                                  | `string`       | —       | yes      |
+| `doks_service_subnet` | CIDR for the DOKS Service Subnet                                                                                  | `string`       | —       | yes      |
+| `aws_region`          | AWS Region ID in which the AWS VPC will be created                                                                | `string`       | —       | yes      |
+| `aws_vpc_cidr`        | CIDR to use for the AWS VPC                                                                                       | `string`       | —       | yes      |
+| `vpn_psk`             | Pre-shared key to use for the AWS Site-to-Site VPN connection (8–64 alphanumeric, `.`, or `_` as required by AWS) | `string`       | —       | yes      |
 
-|   |
-| - |
 
 ### Outputs
 
 | Name                         | Description                                                                     |
-| ---------------------------- | ------------------------------------------------------------------------------- |
+|------------------------------|---------------------------------------------------------------------------------|
 | `aws_instance_ip`            | IP Address of the EC2 Instance created for testing                              |
+| `doks_cluster_id`            | The Id of the DOKS cluster. This value is used in the testing of the module.    |
 | `helm_route_install_command` | Commands used to install the vpn-route Helm chart into the created DOKS cluster |
 | `ping_test_command`          | Commands used to deploy a pod into the DOKS cluster and ping the EC2 instance   |
 

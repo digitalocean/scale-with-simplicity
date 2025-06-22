@@ -71,8 +71,8 @@ resource "digitalocean_kubernetes_cluster" "vpn_test" {
   name           = var.name_prefix
   region         = var.do_region
   version        = data.digitalocean_kubernetes_versions.vpn_test.latest_version
-  cluster_subnet = "172.16.0.0/20"
-  service_subnet = "192.168.0.0/22"
+  cluster_subnet = var.doks_cluster_subnet
+  service_subnet = var.doks_service_subnet
   vpc_uuid       = digitalocean_vpc.vpn.id
   tags           = local.do_tags
   routing_agent {

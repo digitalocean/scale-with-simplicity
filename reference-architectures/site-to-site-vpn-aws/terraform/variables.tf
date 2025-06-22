@@ -44,6 +44,16 @@ variable "do_vpc_cidr" {
   type        = string
 }
 
+variable "doks_cluster_subnet" {
+  description = "CIDR for the DOKS Cluster Subnet"
+  type = string
+}
+
+variable "doks_service_subnet" {
+  description = "CIDR for the DOKS Service Subnet"
+  type = string
+}
+
 variable "vpn_psk" {
   description = "Pre-shared key to use for the AWS Site-to-Site VPN connection. Must be 8 to 64 characters, and contain only alphanumeric characters, dots (.), or underscores (_), as required by AWS."
   type        = string
