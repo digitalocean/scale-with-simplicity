@@ -46,12 +46,12 @@ variable "do_vpc_cidr" {
 
 variable "doks_cluster_subnet" {
   description = "CIDR for the DOKS Cluster Subnet"
-  type = string
+  type        = string
 }
 
 variable "doks_service_subnet" {
   description = "CIDR for the DOKS Service Subnet"
-  type = string
+  type        = string
 }
 
 variable "vpn_psk" {

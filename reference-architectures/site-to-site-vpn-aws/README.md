@@ -64,7 +64,6 @@ Assuming you have doctl, helm and kubectl installed you can copy the command out
 | Name                         | Description                                                                     |
 |------------------------------|---------------------------------------------------------------------------------|
 | `aws_instance_ip`            | IP Address of the EC2 Instance created for testing                              |
-| `doks_cluster_id`            | The Id of the DOKS cluster. This value is used in the testing of the module.    |
 | `helm_route_install_command` | Commands used to install the vpn-route Helm chart into the created DOKS cluster |
 | `ping_test_command`          | Commands used to deploy a pod into the DOKS cluster and ping the EC2 instance   |
 

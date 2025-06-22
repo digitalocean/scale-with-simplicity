@@ -27,7 +27,7 @@ resource "digitalocean_reserved_ip" "vpn_gateway" {
 }
 
 module "do_vpn_droplet" {
-  source               = "github.com/digitalocean/terraform-digitalocean-ipsec-gateway"
+  source               = "github.com/digitalocean/terraform-digitalocean-ipsec-gateway?ref=v1.0.0"
   name                 = "${var.name_prefix}-vgw"
   image                = var.droplet_image
   size                 = var.droplet_size

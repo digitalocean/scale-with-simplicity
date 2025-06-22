@@ -12,11 +12,6 @@ import (
 	"github.com/gruntwork-io/terratest/modules/random"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
-	"io"
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/kubernetes"
 	"path/filepath"
 	"time"
 
@@ -77,62 +72,6 @@ func verifyVpnUp(t *testing.T, ctx context.Context, client *ec2.Client, tagValue
 	}
 
 	t.Fatalf("VPN never reached UP after %d attempts (~%s)", maxRetries, initialDelay+retryDelay*time.Duration(maxRetries))
-}
-
-// verifyPing spins up a netshoot pod that pings instanceIP 4× and returns an error if the pod fails or if packet loss is non-zero.
-func verifyPing(k8sClient *kubernetes.Clientset, instanceIP string) error {
-	ctx := context.Background()
-
-	pod := &v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: "ping-",
-			Namespace:    "default",
-		},
-		Spec: v1.PodSpec{
-			RestartPolicy: v1.RestartPolicyNever,
-			Containers: []v1.Container{{
-				Name:    "ping-test",
-				Image:   "nicolaka/netshoot",
-				Command: []string{"ping", "-c", "4", instanceIP},
-			}},
-		},
-	}
-
-	pod, err := k8sClient.CoreV1().Pods("default").Create(ctx, pod, metav1.CreateOptions{})
-	if err != nil {
-		return fmt.Errorf("create ping pod: %w", err)
-	}
-
-	// wait for pod to finish
-	if err := wait.Poll(5*time.Second, 2*time.Minute, func() (bool, error) {
-		p, err := k8sClient.CoreV1().Pods("default").Get(ctx, pod.Name, metav1.GetOptions{})
-		if err != nil {
-			return false, err
-		}
-		return p.Status.Phase == v1.PodSucceeded || p.Status.Phase == v1.PodFailed, nil
-	}); err != nil {
-		return fmt.Errorf("pod did not complete: %w", err)
-	}
-
-	// grab logs
-	logReq := k8sClient.CoreV1().Pods("default").GetLogs(pod.Name, &v1.PodLogOptions{})
-	stream, err := logReq.Stream(ctx)
-	if err != nil {
-		return fmt.Errorf("stream logs: %w", err)
-	}
-	defer stream.Close()
-
-	bts, err := io.ReadAll(stream)
-	if err != nil {
-		return fmt.Errorf("read logs: %w", err)
-	}
-	out := string(bts)
-
-	if !strings.Contains(out, "0% packet loss") {
-		return fmt.Errorf("non-zero packet loss, logs:\n%s", out)
-	}
-
-	return nil
 }
 
 func TestApplyAndDestroy(t *testing.T) {

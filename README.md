@@ -8,6 +8,7 @@ This repo contains reference architectures developed by DigitalOcean to allow ou
 | Name                                                                                               | Use Case                                                                                                                            |
 |----------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|
 | [Globally Load Balanced Web Servers](./reference-architectures/globally-load-balanced-web-servers) | Load balanced web servers deployed into multiple regions with a global load balancer directing users to the region closest to them. |
+| [Site to Site VPN with AWS](./reference-architectures/site-to-site-vpn-aws)                        | IPSec VPN Gateway Droplet connecting DO VPC and DOKS cluster with AWS VPC                                                           |
 
 ## How to Deploy
 A typical way to deploy for testing purposes would be to:
