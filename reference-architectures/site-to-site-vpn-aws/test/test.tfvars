@@ -8,4 +8,3 @@ do_vpc_cidr = "10.1.0.0/22"
 doks_cluster_subnet = "172.16.16.0/20"
 doks_service_subnet =  "192.168.4.0/22"
 vpn_psk = "IvDyI4_phUZ1i2Rg"
-droplet_ssh_keys = [46093502]
