@@ -140,11 +140,12 @@ resource "aws_security_group" "allow_ping" {
 }
 
 resource "aws_instance" "t4g_nano" {
-  ami                    = data.aws_ami.amazon_linux_arm.id
-  instance_type          = "t4g.nano"
-  subnet_id              = module.aws_vpc.private_subnets[0]
-  vpc_security_group_ids = [aws_security_group.allow_ping.id]
-  tags                   = local.aws_tags
+  ami                         = data.aws_ami.amazon_linux_arm.id
+  instance_type               = "t4g.nano"
+  associate_public_ip_address = false
+  subnet_id                   = module.aws_vpc.private_subnets[0]
+  vpc_security_group_ids      = [aws_security_group.allow_ping.id]
+  tags                        = local.aws_tags
 }
 
 resource "aws_customer_gateway" "gateway" {
