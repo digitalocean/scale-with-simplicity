@@ -1,5 +1,5 @@
 tls           = false
-domain        = "www.do.jjk3.com"
+domain        = "test.fakedomain.tld"
 name_prefix   = "glb-ws-test"
 droplet_size  = "s-1vcpu-2gb"
 droplet_image = "ubuntu-20-04-x64"
