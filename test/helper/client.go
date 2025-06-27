@@ -6,6 +6,7 @@ import (
 	"os"
 )
 
+// CreateGodoClient reads $DIGITALOCEAN_ACCESS_TOKEN and returns a godo.Client or panics.
 func CreateGodoClient() *godo.Client {
 	accessToken, ok := os.LookupEnv("DIGITALOCEAN_ACCESS_TOKEN")
 	if ok {

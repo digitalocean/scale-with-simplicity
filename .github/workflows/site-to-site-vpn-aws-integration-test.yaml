@@ -1,0 +1,15 @@
+name: site-to-site-vpn-aws Apply-Destroy
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  call-common:
+    uses: ./.github/workflows/workflow-terraform-integration-test.yaml
+    with:
+      module_path: reference-architectures/site-to-site-vpn-aws
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.SOLUTIONS_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.SOLUTIONS_AWS_SECRET_ACCESS_KEY }}
+      DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.TEST_DIGITALOCEAN_ACCESS_TOKEN }}
