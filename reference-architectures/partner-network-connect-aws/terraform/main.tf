@@ -1,9 +1,9 @@
 locals {
-  aws_asn        = 64512
-  aws_connection = try([for conn in megaport_vxc.aws.csp_connections : conn if conn.connect_type == "AWS"][0], null)
-  aws_connection2 = try([for conn in megaport_vxc.aws2.csp_connections : conn if conn.connect_type == "AWS"][0], null)
-  do_asn         = 64532
-  mp_asn         = 133937
+  aws_asn          = 64512
+  aws_connection_0 = try([for conn in megaport_vxc.aws_0.csp_connections : conn if conn.connect_type == "AWS"][0], null)
+  aws_connection_1 = try([for conn in megaport_vxc.aws_1.csp_connections : conn if conn.connect_type == "AWS"][0], null)
+  do_asn           = 64532
+  mp_asn           = 133937
   aws_tags = {
     ReferenceArchitecture : "partner-network-connect-aws"
     Instance : var.name_prefix
@@ -71,13 +71,12 @@ resource "digitalocean_kubernetes_cluster" "pnc_test" {
 
 
 
-resource "digitalocean_partner_attachment" "megaport" {
-  name                         = var.name_prefix
+resource "digitalocean_partner_attachment" "megaport_0" {
+  name                         = "${var.name_prefix}-0"
   connection_bandwidth_in_mbps = var.connection_bandwidth_in_mbps
   region                       = substr(var.do_region, 0, 3)
   naas_provider                = "MEGAPORT"
-  # redundancy_zone              = "MEGAPORT_RED"
-  vpc_ids = [digitalocean_vpc.pnc.id]
+  vpc_ids                      = [digitalocean_vpc.pnc.id]
   bgp {
     local_router_ip = "169.254.0.1/29"
     peer_router_asn = local.mp_asn
@@ -86,18 +85,17 @@ resource "digitalocean_partner_attachment" "megaport" {
   }
 }
 
-data "digitalocean_partner_attachment_service_key" "megaport" {
-  attachment_id = digitalocean_partner_attachment.megaport.id
+data "digitalocean_partner_attachment_service_key" "megaport_0" {
+  attachment_id = digitalocean_partner_attachment.megaport_0.id
 }
 
-resource "digitalocean_partner_attachment" "megaport2" {
-  name                         = "${var.name_prefix}-ha"
+resource "digitalocean_partner_attachment" "megaport_1" {
+  name                         = "${var.name_prefix}-1"
   connection_bandwidth_in_mbps = var.connection_bandwidth_in_mbps
   region                       = substr(var.do_region, 0, 3)
   naas_provider                = "MEGAPORT"
-  # redundancy_zone              = "MEGAPORT_RED"
-  vpc_ids     = [digitalocean_vpc.pnc.id]
-  parent_uuid = digitalocean_partner_attachment.megaport.id
+  vpc_ids                      = [digitalocean_vpc.pnc.id]
+  parent_uuid                  = digitalocean_partner_attachment.megaport_0.id
   bgp {
     local_router_ip = "169.254.0.9/29"
     peer_router_asn = local.mp_asn
@@ -106,8 +104,8 @@ resource "digitalocean_partner_attachment" "megaport2" {
   }
 }
 
-data "digitalocean_partner_attachment_service_key" "megaport2" {
-  attachment_id = digitalocean_partner_attachment.megaport2.id
+data "digitalocean_partner_attachment_service_key" "megaport_1" {
+  attachment_id = digitalocean_partner_attachment.megaport_1.id
 }
 
 
@@ -118,17 +116,17 @@ provider "megaport" {
   accept_purchase_terms = true
 }
 
-data "megaport_location" "nyc" {
+data "megaport_location" "location_0" {
   # https://www.megaport.com/megaport-enabled-locations
   name = "Digital Realty New York JFK13 (NYC3)"
 }
 
-data "megaport_location" "nyc2" {
+data "megaport_location" "location_1" {
   # https://www.megaport.com/megaport-enabled-locations
   name = "Equinix NY2"
 }
 
-data "megaport_partner" "aws" {
+data "megaport_partner" "aws_0" {
   connect_type = "AWS"
   company_name = "AWS"
   product_name = "US East (N. Virginia) (us-east-1)"
@@ -136,7 +134,7 @@ data "megaport_partner" "aws" {
   location_id = 75
 }
 
-data "megaport_partner" "aws2" {
+data "megaport_partner" "aws_1" {
   connect_type = "AWS"
   company_name = "AWS"
   product_name = "US East (N. Virginia) (us-east-1)"
@@ -144,42 +142,42 @@ data "megaport_partner" "aws2" {
   location_id = 67
 }
 
-resource "megaport_mcr" "mcr" {
-  product_name         = var.name_prefix
+resource "megaport_mcr" "mcr_0" {
+  product_name         = "${var.name_prefix}-0"
   port_speed           = var.connection_bandwidth_in_mbps
-  location_id          = data.megaport_location.nyc.id
-  contract_term_months = 1
-  diversity_zone       = digitalocean_partner_attachment.megaport.redundancy_zone == "MEGAPORT_RED" ? "red" : digitalocean_partner_attachment.megaport.redundancy_zone == "MEGAPORT_BLUE" ? "blue" : digitalocean_partner_attachment.megaport.redundancy_zone
+  location_id          = data.megaport_location.location_0.id
+  contract_term_months = var.mp_contract_term_months
+  diversity_zone       = digitalocean_partner_attachment.megaport_0.redundancy_zone == "MEGAPORT_RED" ? "red" : digitalocean_partner_attachment.megaport_0.redundancy_zone == "MEGAPORT_BLUE" ? "blue" : digitalocean_partner_attachment.megaport_0.redundancy_zone
 }
 
-resource "megaport_mcr" "mcr2" {
-  product_name         = var.name_prefix
+resource "megaport_mcr" "mcr_1" {
+  product_name         = "${var.name_prefix}-1"
   port_speed           = var.connection_bandwidth_in_mbps
-  location_id          = data.megaport_location.nyc.id
+  location_id          = data.megaport_location.location_0.id
   contract_term_months = 1
-  diversity_zone       = digitalocean_partner_attachment.megaport2.redundancy_zone == "MEGAPORT_RED" ? "red" : digitalocean_partner_attachment.megaport2.redundancy_zone == "MEGAPORT_BLUE" ? "blue" : digitalocean_partner_attachment.megaport2.redundancy_zone
+  diversity_zone       = digitalocean_partner_attachment.megaport_1.redundancy_zone == "MEGAPORT_RED" ? "red" : digitalocean_partner_attachment.megaport_1.redundancy_zone == "MEGAPORT_BLUE" ? "blue" : digitalocean_partner_attachment.megaport_1.redundancy_zone
 }
 
-resource "megaport_vxc" "do" {
-  product_name         = "${var.name_prefix}-do-vxc"
+resource "megaport_vxc" "do_0" {
+  product_name         = "${var.name_prefix}-do-0"
   rate_limit           = var.connection_bandwidth_in_mbps
   contract_term_months = var.mp_contract_term_months
-  service_key          = data.digitalocean_partner_attachment_service_key.megaport.value
+  service_key          = data.digitalocean_partner_attachment_service_key.megaport_0.value
   a_end = {
-    requested_product_uid = megaport_mcr.mcr.product_uid
+    requested_product_uid = megaport_mcr.mcr_0.product_uid
   }
   a_end_partner_config = {
     partner = "vrouter"
     vrouter_config = {
       interfaces = [
         {
-          ip_addresses = [digitalocean_partner_attachment.megaport.bgp[0].peer_router_ip]
+          ip_addresses = [digitalocean_partner_attachment.megaport_0.bgp[0].peer_router_ip]
           bgp_connections = [{
-            password         = digitalocean_partner_attachment.megaport.bgp[0].auth_key
+            password         = digitalocean_partner_attachment.megaport_0.bgp[0].auth_key
             local_asn        = local.mp_asn
-            local_ip_address = split("/", digitalocean_partner_attachment.megaport.bgp[0].peer_router_ip)[0]
+            local_ip_address = split("/", digitalocean_partner_attachment.megaport_0.bgp[0].peer_router_ip)[0]
             peer_asn         = local.do_asn
-            peer_ip_address  = split("/", digitalocean_partner_attachment.megaport.bgp[0].local_router_ip)[0]
+            peer_ip_address  = split("/", digitalocean_partner_attachment.megaport_0.bgp[0].local_router_ip)[0]
           }]
         }
       ]
@@ -188,26 +186,26 @@ resource "megaport_vxc" "do" {
   b_end = {}
 }
 
-resource "megaport_vxc" "do2" {
-  product_name         = "${var.name_prefix}-do-vxc-ha"
+resource "megaport_vxc" "do_1" {
+  product_name         = "${var.name_prefix}-do-1"
   rate_limit           = var.connection_bandwidth_in_mbps
   contract_term_months = var.mp_contract_term_months
-  service_key          = data.digitalocean_partner_attachment_service_key.megaport2.value
+  service_key          = data.digitalocean_partner_attachment_service_key.megaport_1.value
   a_end = {
-    requested_product_uid = megaport_mcr.mcr2.product_uid
+    requested_product_uid = megaport_mcr.mcr_1.product_uid
   }
   a_end_partner_config = {
     partner = "vrouter"
     vrouter_config = {
       interfaces = [
         {
-          ip_addresses = [digitalocean_partner_attachment.megaport2.bgp[0].peer_router_ip]
+          ip_addresses = [digitalocean_partner_attachment.megaport_1.bgp[0].peer_router_ip]
           bgp_connections = [{
-            password         = digitalocean_partner_attachment.megaport2.bgp[0].auth_key
+            password         = digitalocean_partner_attachment.megaport_1.bgp[0].auth_key
             local_asn        = local.mp_asn
-            local_ip_address = split("/", digitalocean_partner_attachment.megaport2.bgp[0].peer_router_ip)[0]
+            local_ip_address = split("/", digitalocean_partner_attachment.megaport_1.bgp[0].peer_router_ip)[0]
             peer_asn         = local.do_asn
-            peer_ip_address  = split("/", digitalocean_partner_attachment.megaport2.bgp[0].local_router_ip)[0]
+            peer_ip_address  = split("/", digitalocean_partner_attachment.megaport_1.bgp[0].local_router_ip)[0]
           }]
         }
       ]
@@ -216,23 +214,23 @@ resource "megaport_vxc" "do2" {
   b_end = {}
 }
 
-resource "megaport_vxc" "aws" {
-  product_name         = "${var.name_prefix}-aws-vxc"
+resource "megaport_vxc" "aws_0" {
+  product_name         = "${var.name_prefix}-aws-v0"
   rate_limit           = var.connection_bandwidth_in_mbps
   contract_term_months = var.mp_contract_term_months
 
   a_end = {
-    requested_product_uid = megaport_mcr.mcr.product_uid
+    requested_product_uid = megaport_mcr.mcr_0.product_uid
   }
 
   b_end = {
-    requested_product_uid = data.megaport_partner.aws.product_uid
+    requested_product_uid = data.megaport_partner.aws_0.product_uid
   }
 
   b_end_partner_config = {
     partner = "aws"
     aws_config = {
-      name          = var.name_prefix
+      name          = "${var.name_prefix}-0"
       asn           = local.mp_asn
       amazon_asn    = local.aws_asn
       type          = "private"
@@ -243,23 +241,23 @@ resource "megaport_vxc" "aws" {
   }
 }
 
-resource "megaport_vxc" "aws2" {
-  product_name         = "${var.name_prefix}-aws-vxc-ha"
+resource "megaport_vxc" "aws_1" {
+  product_name         = "${var.name_prefix}-aws-1"
   rate_limit           = var.connection_bandwidth_in_mbps
   contract_term_months = var.mp_contract_term_months
 
   a_end = {
-    requested_product_uid = megaport_mcr.mcr2.product_uid
+    requested_product_uid = megaport_mcr.mcr_1.product_uid
   }
 
   b_end = {
-    requested_product_uid = data.megaport_partner.aws2.product_uid
+    requested_product_uid = data.megaport_partner.aws_1.product_uid
   }
 
   b_end_partner_config = {
     partner = "aws"
     aws_config = {
-      name          = "${var.name_prefix}-ha"
+      name          = "${var.name_prefix}-1"
       asn           = local.mp_asn
       amazon_asn    = local.aws_asn
       type          = "private"
@@ -290,13 +288,13 @@ module "aws_vpc" {
 }
 
 
-resource "aws_dx_hosted_private_virtual_interface_accepter" "mp_vif" {
-  virtual_interface_id = local.aws_connection.vif_id
+resource "aws_dx_hosted_private_virtual_interface_accepter" "mp_vif_0" {
+  virtual_interface_id = local.aws_connection_0.vif_id
   vpn_gateway_id       = module.aws_vpc.vgw_id
 }
 
-resource "aws_dx_hosted_private_virtual_interface_accepter" "mp_vif2" {
-  virtual_interface_id = local.aws_connection2.vif_id
+resource "aws_dx_hosted_private_virtual_interface_accepter" "mp_vif_1" {
+  virtual_interface_id = local.aws_connection_1.vif_id
   vpn_gateway_id       = module.aws_vpc.vgw_id
 }
 
