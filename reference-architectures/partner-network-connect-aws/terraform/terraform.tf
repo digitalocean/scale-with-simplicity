@@ -10,7 +10,7 @@ terraform {
       version = "~> 2.57"
     }
     megaport = {
-      source = "megaport/megaport"
+      source  = "megaport/megaport"
       version = "~> 1.3.8"
     }
     random = {
