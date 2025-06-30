@@ -118,27 +118,27 @@ provider "megaport" {
 
 data "megaport_location" "location_0" {
   # https://www.megaport.com/megaport-enabled-locations
-  name = "Digital Realty New York JFK13 (NYC3)"
+  name = "Digital Realty Atlanta ATL13 (ATL1)"
 }
 
 data "megaport_location" "location_1" {
   # https://www.megaport.com/megaport-enabled-locations
-  name = "Equinix NY2"
+  name = "Digital Realty New York EWR21 (NJR3)"
 }
 
 data "megaport_partner" "aws_0" {
   connect_type = "AWS"
   company_name = "AWS"
   product_name = "US East (N. Virginia) (us-east-1)"
-  # How does a normal person get this?
-  location_id = 75
+  # How does a non-developer get this?
+  location_id = data.megaport_location.location_0.id
 }
 
 data "megaport_partner" "aws_1" {
   connect_type = "AWS"
   company_name = "AWS"
   product_name = "US East (N. Virginia) (us-east-1)"
-  # How does a normal person get this?
+  # How does a non-developer get this?
   location_id = 67
 }
 
@@ -153,7 +153,7 @@ resource "megaport_mcr" "mcr_0" {
 resource "megaport_mcr" "mcr_1" {
   product_name         = "${var.name_prefix}-1"
   port_speed           = var.connection_bandwidth_in_mbps
-  location_id          = data.megaport_location.location_0.id
+  location_id          = data.megaport_location.location_1.id
   contract_term_months = 1
   diversity_zone       = digitalocean_partner_attachment.megaport_1.redundancy_zone == "MEGAPORT_RED" ? "red" : digitalocean_partner_attachment.megaport_1.redundancy_zone == "MEGAPORT_BLUE" ? "blue" : digitalocean_partner_attachment.megaport_1.redundancy_zone
 }
