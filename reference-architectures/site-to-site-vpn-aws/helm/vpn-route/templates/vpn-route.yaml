@@ -1,0 +1,9 @@
+apiVersion: networking.doks.digitalocean.com/v1alpha1
+kind: Route
+metadata:
+  name: aws-vpn
+spec:
+  destinations:
+    - {{ .Values.awsVpcCidr }}
+  gateways:
+    - {{ .Values.vpnGwIp }}
