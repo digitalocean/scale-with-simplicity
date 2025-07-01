@@ -48,14 +48,12 @@ variable "mp_do_location_blue" {
   description = "The Megaport location name used for the MCR and DO VXC in the Blue Redundancy Zone"
   type        = string
   default     = "Equinix NY9"
-  # default     = null
 }
 
 variable "mp_aws_location_blue" {
   description = "The Megaport location name used for AWS VXC in the Blue Redundancy Zone"
   type        = string
   default     = "Equinix DC4"
-  # default     = null
 }
 
 variable "ha_enabled" {
