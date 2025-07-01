@@ -38,24 +38,39 @@ variable "mp_do_location_red" {
   default     = "Digital Realty New York JFK12 (NYC1)"
 }
 
-variable "mp_do_location_blue" {
-  description = "The Megaport location name that is used for the MCR and DO VXC in the Blue Redundancy Zone"
-  type        = string
-  default     = "Equinix NY9"
-}
-
 variable "mp_aws_location_red" {
   description = "The Megaport location name that is used for AWS VXC in the Red Redundancy Zone"
   type        = string
   default     = "CoreSite NY1"
 }
 
-variable "mp_aws_location_blue" {
-  description = "The Megaport location name that is used for AWS VXC in the Blue Redundancy Zone"
+variable "mp_do_location_blue" {
+  description = "The Megaport location name used for the MCR and DO VXC in the Blue Redundancy Zone"
   type        = string
-  default     = "Equinix DC4"
+  default     = "Equinix NY9"
+  # default     = null
 }
 
+variable "mp_aws_location_blue" {
+  description = "The Megaport location name used for AWS VXC in the Blue Redundancy Zone"
+  type        = string
+  default     = "Equinix DC4"
+  # default     = null
+}
+
+variable "ha_enabled" {
+  description = "Will create a second connection between DO and AWS using the Blue Redundancy Zone"
+  type        = bool
+  default     = false
+
+  validation {
+    condition = (
+    !var.ha_enabled ||
+    (var.mp_do_location_blue != null && var.mp_aws_location_blue != null)
+    )
+    error_message = "When ha_enabled is true, both mp_do_location_blue and mp_aws_location_blue must be set."
+  }
+}
 
 variable "aws_region" {
   type    = string
@@ -66,4 +81,9 @@ variable "aws_vpc_cidr" {
   description = "CIDR to use for the AWS VPC"
   type        = string
   default     = "192.168.0.0/24"
+}
+
+variable "aws_region_full_name" {
+  type = string
+  default = "US East (N. Virginia) (us-east-1)"
 }
