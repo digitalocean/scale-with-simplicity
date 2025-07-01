@@ -32,6 +32,31 @@ variable "mp_contract_term_months" {
   default = 1
 }
 
+variable "mp_do_location_red" {
+  description = "The Megaport location name that is used for the MCR and DO VXC in the Red Redundancy Zone"
+  type        = string
+  default     = "Digital Realty New York JFK12 (NYC1)"
+}
+
+variable "mp_do_location_blue" {
+  description = "The Megaport location name that is used for the MCR and DO VXC in the Blue Redundancy Zone"
+  type        = string
+  default     = "Equinix NY9"
+}
+
+variable "mp_aws_location_red" {
+  description = "The Megaport location name that is used for AWS VXC in the Red Redundancy Zone"
+  type        = string
+  default     = "CoreSite NY1"
+}
+
+variable "mp_aws_location_blue" {
+  description = "The Megaport location name that is used for AWS VXC in the Blue Redundancy Zone"
+  type        = string
+  default     = "Equinix DC4"
+}
+
+
 variable "aws_region" {
   type    = string
   default = "us-east-1"
@@ -42,9 +67,3 @@ variable "aws_vpc_cidr" {
   type        = string
   default     = "192.168.0.0/24"
 }
-
-# variable "enable_ha" {
-#   description = "If true then redundant resources are created to provide an HA connection between DO and AWS VPCs"
-#   type = bool
-#   default = true
-# }
