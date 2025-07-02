@@ -1,0 +1,12 @@
+name_prefix                = "jkeegan-test"
+do_region                  = "sfo3"
+doks_cluster_subnet        = "172.16.0.0/16"
+doks_service_subnet        = "172.17.0.0/16"
+mp_do_location_red         = "Hurricane Electric HE2"
+mp_aws_location_red        = "Switch Las Vegas (The Core)"
+mp_do_location_blue        = "Equinix SV1/10"
+mp_aws_location_blue       = "EdgeConneX Portland"
+aws_region_full_name       = "US West (Oregon) (us-west-2)"
+ha_enabled                 = true
+aws_region                 = "us-west-2"
+aws_vpc_cidr               = "192.168.0.0/24"

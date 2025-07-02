@@ -72,38 +72,41 @@ provider "megaport" {
 }
 
 module "pnc_red" {
-  source = "./modules/pnc-aws"
-  name_prefix = var.name_prefix
-  connection_bandwidth_in_mbps = var.connection_bandwidth_in_mbps
-  bgp_password = random_password.bgp_auth_key.result
-  redundancy_zone = "red"
-  do_region = var.do_region
-  do_vpc_ids = [digitalocean_vpc.pnc.id]
-  do_local_router_ip = "169.254.0.1/29"
-  do_peer_router_ip = "169.254.0.6/29"
-  mp_contract_term_months = var.mp_contract_term_months
-  mp_do_location = var.mp_do_location_red
-  mp_aws_location = var.mp_aws_location_red
-  aws_region_full_name = var.aws_region_full_name
-  aws_vgw_id = module.aws_vpc.vgw_id
+  source                     = "github.com/digitalocean/terraform-digitalocean-partner-network-connect-aws"
+  name_prefix                = var.name_prefix
+  do_region                  = substr(var.do_region, 0, 3)
+  mp_contract_term_months    = var.mp_contract_term_months
+  mcr_port_bandwidth_in_mbps = 1000
+  vxc_bandwidth_in_mbps      = 1000
+  mp_do_location             = var.mp_do_location_red
+  mp_aws_location            = var.mp_aws_location_red
+  aws_region_full_name       = var.aws_region_full_name
+  aws_vgw_id                 = module.aws_vpc.vgw_id
+  do_vpc_ids                 = [digitalocean_vpc.pnc.id]
+  bgp_password               = random_password.bgp_auth_key.result
+  diversity_zone             = "red"
+  do_local_router_ip         = "169.254.0.1/29"
+  do_peer_router_ip          = "169.254.0.6/29"
 }
 
 module "pnc_blue" {
-  count  = var.ha_enabled ? 1 : 0
-  source = "./modules/pnc-aws"
-  name_prefix = var.name_prefix
-  connection_bandwidth_in_mbps = var.connection_bandwidth_in_mbps
-  bgp_password = random_password.bgp_auth_key.result
-  redundancy_zone = "blue"
-  do_region = var.do_region
-  do_vpc_ids = [digitalocean_vpc.pnc.id]
-  do_local_router_ip = "169.254.0.9/29"
-  do_peer_router_ip = "169.254.0.14/29"
-  mp_contract_term_months = var.mp_contract_term_months
-  mp_do_location = var.mp_do_location_blue
-  mp_aws_location = var.mp_aws_location_blue
-  aws_region_full_name = var.aws_region_full_name
-  aws_vgw_id = module.aws_vpc.vgw_id
+  count                      = var.ha_enabled ? 1 : 0
+  source                     = "github.com/digitalocean/terraform-digitalocean-partner-network-connect-aws"
+  name_prefix                = var.name_prefix
+  do_region                  = substr(var.do_region, 0, 3)
+  mp_contract_term_months    = var.mp_contract_term_months
+  mcr_port_bandwidth_in_mbps = 1000
+  vxc_bandwidth_in_mbps      = 1000
+  mp_do_location             = var.mp_do_location_blue
+  mp_aws_location            = var.mp_aws_location_blue
+  aws_region_full_name       = var.aws_region_full_name
+  aws_vgw_id                 = module.aws_vpc.vgw_id
+  do_vpc_ids                 = [digitalocean_vpc.pnc.id]
+  bgp_password               = random_password.bgp_auth_key.result
+  diversity_zone             = "blue"
+  parent_uuid                = module.pnc_red.partner_attachment_uuid
+  do_local_router_ip         = "169.254.0.9/29"
+  do_peer_router_ip          = "169.254.0.14/29"
 }
 
 ## AWS
