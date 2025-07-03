@@ -3,6 +3,7 @@ module github.com/digitalocean/scale-with-simplicity/reference-architectures/par
 go 1.24.2
 
 require (
+	github.com/digitalocean/godo v1.155.0
 	github.com/digitalocean/scale-with-simplicity/test v0.0.0
 	github.com/gruntwork-io/terratest v0.50.0
 	github.com/stretchr/testify v1.10.0
@@ -55,7 +56,6 @@ require (
 	github.com/charmbracelet/keygen v0.5.3 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.5 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/digitalocean/godo v1.153.0 // indirect
 	github.com/emicklei/go-restful/v3 v3.9.0 // indirect
 	github.com/go-errors/errors v1.0.2-0.20180813162953-d98b870cc4e0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect

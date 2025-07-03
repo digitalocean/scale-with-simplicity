@@ -12,3 +12,11 @@ output "ping_test_command" {
   description = "Commands used to deploy a pod into the DOKS cluster and ping the EC2 instance"
   value       = "kubectl run -it --rm test-pod --image=nicolaka/netshoot -- ping ${aws_instance.t4g_nano.private_ip}"
 }
+
+output "partner_attachment_uuid_red" {
+  value = module.pnc_red.partner_attachment_uuid
+}
+
+output "partner_attachment_uuid_blue" {
+  value = var.ha_enabled ? module.pnc_blue[0].partner_attachment_uuid : null
+}
