@@ -4,6 +4,8 @@ This Terraform module provisions a complete, highly available (HA) end-to-end co
 
 ## Architecture Overview
 
+<img src="./partner-network-connect-aws.png" width="700">
+
 1. **DigitalOcean Side**
     * A DigitalOcean VPC and Kubernetes cluster (DOKS).
     * Two Partner Network Connect (PNC) attachments (red and optional blue) created via Megaport Cloud Router (MCR) and Virtual Cross Connects (VXCs).
