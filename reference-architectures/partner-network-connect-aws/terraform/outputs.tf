@@ -14,9 +14,11 @@ output "ping_test_command" {
 }
 
 output "partner_attachment_uuid_red" {
-  value = module.pnc_red.partner_attachment_uuid
+  description = "The UUID of the Partner Network Connect Attachment for the Red Diversity Zone"
+  value       = module.pnc_red.partner_attachment_uuid
 }
 
 output "partner_attachment_uuid_blue" {
-  value = var.ha_enabled ? module.pnc_blue[0].partner_attachment_uuid : null
+  description = "The UUID of the Partner Network Connect Attachment for the Blue Diversity Zone whehn HA is enabled"
+  value       = var.ha_enabled ? module.pnc_blue[0].partner_attachment_uuid : null
 }

@@ -4,7 +4,8 @@ variable "name_prefix" {
 }
 
 variable "do_region" {
-  type = string
+  description = "DO region slug for the region where DO resources will be deployed/configured"
+  type        = string
 }
 
 variable "doks_cluster_subnet" {
@@ -18,8 +19,9 @@ variable "doks_service_subnet" {
 }
 
 variable "mp_contract_term_months" {
-  type    = number
-  default = 1
+  description = "The term of the Megaport contract in months: valid values are 1, 12, 24, and 36. Set to 1 for a month-to-month contract with no minimum term."
+  type        = number
+  default     = 1
 }
 
 variable "mp_do_location_red" {
@@ -56,7 +58,8 @@ variable "ha_enabled" {
 }
 
 variable "aws_region" {
-  type = string
+  description = "AWS Region Id in which the AWS VPC will be created"
+  type        = string
 }
 
 variable "aws_vpc_cidr" {
@@ -65,5 +68,6 @@ variable "aws_vpc_cidr" {
 }
 
 variable "aws_region_full_name" {
-  type = string
+  description = "The name of an AWS Region as it appears in the Megaport console such as 'US East (N. Virginia) (us-east-1)'."
+  type        = string
 }

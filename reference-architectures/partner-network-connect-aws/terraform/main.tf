@@ -72,7 +72,7 @@ provider "megaport" {
 }
 
 module "pnc_red" {
-  source                     = "github.com/digitalocean/terraform-digitalocean-partner-network-connect-aws"
+  source                     = "github.com/digitalocean/terraform-digitalocean-partner-network-connect-aws?ref=v1.0.0"
   name_prefix                = var.name_prefix
   do_region                  = substr(var.do_region, 0, 3)
   mp_contract_term_months    = var.mp_contract_term_months
@@ -91,7 +91,7 @@ module "pnc_red" {
 
 module "pnc_blue" {
   count                      = var.ha_enabled ? 1 : 0
-  source                     = "github.com/digitalocean/terraform-digitalocean-partner-network-connect-aws"
+  source                     = "github.com/digitalocean/terraform-digitalocean-partner-network-connect-aws?ref=v1.0.0"
   name_prefix                = var.name_prefix
   do_region                  = substr(var.do_region, 0, 3)
   mp_contract_term_months    = var.mp_contract_term_months
