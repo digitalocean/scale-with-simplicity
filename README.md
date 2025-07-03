@@ -8,6 +8,7 @@ This repo contains reference architectures developed by DigitalOcean to allow ou
 | Name                                                                                               | Use Case                                                                                                                            |
 |----------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|
 | [Globally Load Balanced Web Servers](./reference-architectures/globally-load-balanced-web-servers) | Load balanced web servers deployed into multiple regions with a global load balancer directing users to the region closest to them. |
+| [Partner Network Connect with AWS](./reference-architectures/partner-network-connect-aws)          | End-to-End connection between DO VPV and AWS VPC using Partner Network Connect with HA support                                      |
 | [Site to Site VPN with AWS](./reference-architectures/site-to-site-vpn-aws)                        | IPSec VPN Gateway Droplet connecting DO VPC and DOKS cluster with AWS VPC                                                           |
 
 ## How to Deploy
