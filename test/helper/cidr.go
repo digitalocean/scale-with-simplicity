@@ -11,8 +11,8 @@ import (
 
 
 // GetVpcCidr returns a free CIDR block for VPCs using a /24 prefix length
-func GetVpcCidr(ctx context.Context, client *godo.Client) (string, error) {
-	cidr, err := GetCidrBlock(ctx, client, "10.0.0.0", 24)
+func GetVpcCidr(ctx context.Context, client *godo.Client, allocatedCidrs ...string) (string, error) {
+	cidr, err := GetCidrBlock(ctx, client, "10.0.0.0", 24, allocatedCidrs)
 	if err != nil {
 		return "", err
 	}
@@ -21,8 +21,8 @@ func GetVpcCidr(ctx context.Context, client *godo.Client) (string, error) {
 	
 
 // GetDoksClusterCidr returns a free CIDR block for DOKS cluster network using a /19 prefix length
-func GetDoksClusterCidr(ctx context.Context, client *godo.Client) (string, error) {
-	cidr, err := GetCidrBlock(ctx, client, "10.0.0.0", 19)
+func GetDoksClusterCidr(ctx context.Context, client *godo.Client, allocatedCidrs ...string) (string, error) {
+	cidr, err := GetCidrBlock(ctx, client, "10.0.0.0", 19, allocatedCidrs)
 	if err != nil {
 		return "", err
 	}
@@ -31,8 +31,8 @@ func GetDoksClusterCidr(ctx context.Context, client *godo.Client) (string, error
 
 
 // GetDoksServiceCidr returns a free CIDR block for DOKS service network using a /22 prefix length
-func GetDoksServiceCidr(ctx context.Context, client *godo.Client) (string, error) {
-	cidr, err := GetCidrBlock(ctx, client, "10.0.0.0", 22)
+func GetDoksServiceCidr(ctx context.Context, client *godo.Client, allocatedCidrs ...string) (string, error) {
+	cidr, err := GetCidrBlock(ctx, client, "10.0.0.0", 22, allocatedCidrs)
 	if err != nil {
 		return "", err
 	}
@@ -52,7 +52,7 @@ func GetDoksServiceCidr(ctx context.Context, client *godo.Client) (string, error
 // Returns:
 //   - A string containing the next available CIDR block (e.g., "10.0.1.0/24")
 //   - An error if no available block is found or if API calls fail
-func GetCidrBlock(ctx context.Context, client *godo.Client, baseNetwork string, prefixLength int) (string, error) {
+func GetCidrBlock(ctx context.Context, client *godo.Client, baseNetwork string, prefixLength int, allocatedCidrs []string) (string, error) {
 	// Validate inputs
 	if client == nil {
 		return "", errors.New("godo client cannot be nil")
@@ -82,6 +82,7 @@ func GetCidrBlock(ctx context.Context, client *godo.Client, baseNetwork string, 
 	if err != nil {
 		return "", fmt.Errorf("failed to get existing CIDR blocks: %w", err)
 	}
+	existingCIDRs = append(existingCIDRs, allocatedCidrs...)
 
 	// Parse all existing CIDRs into network objects
 	existingNetworks := make([]*net.IPNet, 0, len(existingCIDRs))
