@@ -9,19 +9,50 @@ import (
 	"github.com/digitalocean/godo"
 )
 
-// getCidrBlock returns a non-overlapping CIDR block for deploying Terraform-based reference architectures.
+
+// GetVpcCidr returns a free CIDR block for VPCs using a /24 prefix length
+func GetVpcCidr(ctx context.Context, client *godo.Client) (string, error) {
+	cidr, err := GetCidrBlock(ctx, client, "10.0.0.0", 24)
+	if err != nil {
+		return "", err
+	}
+	return cidr, nil
+}
+	
+
+// GetDoksClusterCidr returns a free CIDR block for DOKS cluster network using a /19 prefix length
+func GetDoksClusterCidr(ctx context.Context, client *godo.Client) (string, error) {
+	cidr, err := GetCidrBlock(ctx, client, "10.0.0.0", 19)
+	if err != nil {
+		return "", err
+	}
+	return cidr, nil
+}
+
+
+// GetDoksServiceCidr returns a free CIDR block for DOKS service network using a /22 prefix length
+func GetDoksServiceCidr(ctx context.Context, client *godo.Client) (string, error) {
+	cidr, err := GetCidrBlock(ctx, client, "10.0.0.0", 22)
+	if err != nil {
+		return "", err
+	}
+	return cidr, nil
+}
+
+
+// GetCidrBlock returns a non-overlapping CIDR block for deploying Terraform-based reference architectures.
 // It dynamically assigns a new CIDR block based on existing VPCs and Kubernetes clusters in the DigitalOcean account.
 //
 // Parameters:
 //   - ctx: Context for API calls
 //   - client: Authenticated DigitalOcean API client
-//   - baseNetwork: Base network in CIDR notation without prefix (e.g., "10.0.0.0", "172.16.0.0")
+//   - baseNetwork: Base network in CIDR notation without prefix (e.g., "10.0.0.0", "172.16.0.0"). Must be an RFC1918 address.
 //   - prefixLength: Desired subnet mask length (e.g., 24, 26)
 //
 // Returns:
 //   - A string containing the next available CIDR block (e.g., "10.0.1.0/24")
 //   - An error if no available block is found or if API calls fail
-func getCidrBlock(ctx context.Context, client *godo.Client, baseNetwork string, prefixLength int) (string, error) {
+func GetCidrBlock(ctx context.Context, client *godo.Client, baseNetwork string, prefixLength int) (string, error) {
 	// Validate inputs
 	if client == nil {
 		return "", errors.New("godo client cannot be nil")
@@ -37,10 +68,13 @@ func getCidrBlock(ctx context.Context, client *godo.Client, baseNetwork string, 
 		return "", fmt.Errorf("invalid base network: %s", baseNetwork)
 	}
 
-	// Ensure baseIP is an IPv4 address
+	// Ensure baseIP is an IPv4 address and a private network
 	baseIP = baseIP.To4()
 	if baseIP == nil {
-		return "", fmt.Errorf("base network must be an IPv4 address: %s", baseNetwork)
+		return "", fmt.Errorf("base network must be a valid IPv4 address: %s", baseNetwork)
+	}
+	if !baseIP.IsPrivate() {
+		return "", fmt.Errorf("base network %s is not a private (RFC1918) address", baseNetwork)
 	}
 
 	// Get all existing CIDR blocks from VPCs and Kubernetes clusters
@@ -62,25 +96,25 @@ func getCidrBlock(ctx context.Context, client *godo.Client, baseNetwork string, 
 	// Generate candidate subnets and check for overlaps
 	// Start with the first subnet in the base network
 	baseIPInt := ipToUint32(baseIP)
-	
+
 	// Calculate the subnet size
 	subnetSize := uint32(1) << (32 - prefixLength)
-	
+
 	// Try up to 256 different subnets
 	for i := uint32(0); i < 256; i++ {
 		// Calculate the start IP for this subnet
 		startIP := baseIPInt + (i * subnetSize)
-		
+
 		// Convert back to an IP and create the CIDR
 		candidateIP := uint32ToIP(startIP)
 		candidateCIDR := fmt.Sprintf("%s/%d", candidateIP.String(), prefixLength)
-		
+
 		// Parse the candidate CIDR
 		_, candidateNetwork, err := net.ParseCIDR(candidateCIDR)
 		if err != nil {
 			continue // Skip if we can't parse it
 		}
-		
+
 		// Check if this candidate overlaps with any existing network
 		if !overlapsWithAny(candidateNetwork, existingNetworks) {
 			return candidateCIDR, nil
@@ -164,7 +198,7 @@ func getKubernetesCIDRs(ctx context.Context, client *godo.Client) ([]string, err
 			if cluster.ClusterSubnet != "" {
 				cidrs = append(cidrs, cluster.ClusterSubnet)
 			}
-			
+
 			// Add service subnet CIDR
 			if cluster.ServiceSubnet != "" {
 				cidrs = append(cidrs, cluster.ServiceSubnet)

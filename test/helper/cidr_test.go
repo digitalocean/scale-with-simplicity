@@ -194,11 +194,11 @@ func TestGetCidrBlock(t *testing.T) {
 		expectError    bool
 	}{
 		{
-			name:         "No existing networks",
-			baseNetwork:  "10.0.0.0",
-			prefixLength: 24,
-			existingVPCs: []*godo.VPC{},
-			existingK8s:  []*godo.KubernetesCluster{},
+			name:           "No existing networks",
+			baseNetwork:    "10.0.0.0",
+			prefixLength:   24,
+			existingVPCs:   []*godo.VPC{},
+			existingK8s:    []*godo.KubernetesCluster{},
 			expectedPrefix: "10.0.0.0/24",
 			expectError:    false,
 		},
@@ -209,8 +209,19 @@ func TestGetCidrBlock(t *testing.T) {
 			existingVPCs: []*godo.VPC{
 				{IPRange: "10.0.0.0/24"},
 			},
-			existingK8s: []*godo.KubernetesCluster{},
+			existingK8s:    []*godo.KubernetesCluster{},
 			expectedPrefix: "10.0.1.0/24",
+			expectError:    false,
+		},
+		{
+			name:         "One existing network with different prefix length",
+			baseNetwork:  "10.0.0.0",
+			prefixLength: 22,
+			existingVPCs: []*godo.VPC{
+				{IPRange: "10.0.0.0/24"},
+			},
+			existingK8s:    []*godo.KubernetesCluster{},
+			expectedPrefix: "10.0.4.0/22",
 			expectError:    false,
 		},
 		{
@@ -222,7 +233,7 @@ func TestGetCidrBlock(t *testing.T) {
 				{IPRange: "10.1.1.0/24"},
 				{IPRange: "10.2.0.0/16"},
 			},
-			existingK8s: []*godo.KubernetesCluster{},
+			existingK8s:    []*godo.KubernetesCluster{},
 			expectedPrefix: "10.3.0.0/16",
 			expectError:    false,
 		},
@@ -235,7 +246,7 @@ func TestGetCidrBlock(t *testing.T) {
 				{IPRange: "172.17.1.0/24"},
 				{IPRange: "172.18.0.0/17"},
 			},
-			existingK8s: []*godo.KubernetesCluster{},
+			existingK8s:    []*godo.KubernetesCluster{},
 			expectedPrefix: "172.19.0.0/16",
 			expectError:    false,
 		},
@@ -248,7 +259,7 @@ func TestGetCidrBlock(t *testing.T) {
 				{IPRange: "192.169.1.0/24"},
 				{IPRange: "192.170.0.0/17"},
 			},
-			existingK8s: []*godo.KubernetesCluster{},
+			existingK8s:    []*godo.KubernetesCluster{},
 			expectedPrefix: "192.171.0.0/16",
 			expectError:    false,
 		},
@@ -261,7 +272,7 @@ func TestGetCidrBlock(t *testing.T) {
 				{IPRange: "10.0.1.0/24"},
 				{IPRange: "10.0.2.0/24"},
 			},
-			existingK8s: []*godo.KubernetesCluster{},
+			existingK8s:    []*godo.KubernetesCluster{},
 			expectedPrefix: "10.0.3.0/24",
 			expectError:    false,
 		},
@@ -279,7 +290,7 @@ func TestGetCidrBlock(t *testing.T) {
 			expectError:    false,
 		},
 		{
-			name:         "Not a network base network",
+			name:         "Not an IP address",
 			baseNetwork:  "invalid-ip",
 			prefixLength: 24,
 			existingVPCs: []*godo.VPC{},
@@ -302,25 +313,33 @@ func TestGetCidrBlock(t *testing.T) {
 			existingK8s:  []*godo.KubernetesCluster{},
 			expectError:  true,
 		},
+		{
+			name:         "Reject public IP address",
+			baseNetwork:  "8.8.8.8",
+			prefixLength: 24,
+			existingVPCs: []*godo.VPC{},
+			existingK8s:  []*godo.KubernetesCluster{},
+			expectError:  true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a mock client
 			client := &godo.Client{}
-			
+
 			// Set up mock VPC service
 			client.VPCs = &MockVPCsService{
 				vpcs: tt.existingVPCs,
 			}
-			
+
 			// Set up mock Kubernetes service
 			client.Kubernetes = &MockKubernetesService{
 				clusters: tt.existingK8s,
 			}
 
 			// Call the function
-			cidr, err := getCidrBlock(context.Background(), client, tt.baseNetwork, tt.prefixLength)
+			cidr, err := GetCidrBlock(context.Background(), client, tt.baseNetwork, tt.prefixLength)
 
 			// Check results
 			if tt.expectError {
