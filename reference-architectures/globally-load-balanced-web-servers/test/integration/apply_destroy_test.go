@@ -31,14 +31,7 @@ func TestApplyAndDestroy(t *testing.T) {
 	client := helper.CreateGodoClient()
 	testDomainFqdn := helper.CreateTestDomain(client, constant.TestRootSubdomain, testNamePrefix)
 	sshKey := helper.CreateSshKey(client, testNamePrefix)
-	var vpcCidrs []string
-	for i := 0; i < 3; i++ {
-		cidr, err := helper.GetVpcCidr(ctx, client, vpcCidrs...)
-		if err != nil {
-			t.Fatal(err)
-		}
-		vpcCidrs = append(vpcCidrs, cidr)
-	}
+	cidrAssigner := helper.NewCidrAssigner(ctx, client)
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: testDir,
 		MixedVars: []terraform.Var{
@@ -49,15 +42,15 @@ func TestApplyAndDestroy(t *testing.T) {
 			terraform.VarInline("vpcs", []interface{}{
 				map[string]interface{}{
 					"region":   "nyc3",
-					"ip_range": vpcCidrs[0],
+					"ip_range": cidrAssigner.GetVpcCidr(),
 				},
 				map[string]interface{}{
 					"region":   "sfo3",
-					"ip_range": vpcCidrs[1],
+					"ip_range": cidrAssigner.GetVpcCidr(),
 				},
 				map[string]interface{}{
 					"region":   "ams3",
-					"ip_range": vpcCidrs[2],
+					"ip_range": cidrAssigner.GetVpcCidr(),
 				},
 			}),
 		},

@@ -183,14 +183,13 @@ func (m *MockKubernetesService) GetClusterStatusMessages(ctx context.Context, cl
 	return nil, nil, nil
 }
 
-func TestGetCidrBlock(t *testing.T) {
+func TestCidrAssigner_GetCidrBlock(t *testing.T) {
 	tests := []struct {
 		name           string
 		baseNetwork    string
 		prefixLength   int
 		existingVPCs   []*godo.VPC
 		existingK8s    []*godo.KubernetesCluster
-		allocatedCidrs []string
 		expectedPrefix string
 		expectError    bool
 	}{
@@ -200,7 +199,6 @@ func TestGetCidrBlock(t *testing.T) {
 			prefixLength:   24,
 			existingVPCs:   []*godo.VPC{},
 			existingK8s:    []*godo.KubernetesCluster{},
-			allocatedCidrs: []string{},
 			expectedPrefix: "10.0.0.0/24",
 			expectError:    false,
 		},
@@ -212,20 +210,7 @@ func TestGetCidrBlock(t *testing.T) {
 				{IPRange: "10.0.0.0/24"},
 			},
 			existingK8s:    []*godo.KubernetesCluster{},
-			allocatedCidrs: []string{},
 			expectedPrefix: "10.0.1.0/24",
-			expectError:    false,
-		},
-		{
-			name:         "With allocated CIDRs",
-			baseNetwork:  "10.0.0.0",
-			prefixLength: 24,
-			existingVPCs: []*godo.VPC{
-				{IPRange: "10.0.0.0/24"},
-			},
-			existingK8s:    []*godo.KubernetesCluster{},
-			allocatedCidrs: []string{"10.0.1.0/24"},
-			expectedPrefix: "10.0.2.0/24",
 			expectError:    false,
 		},
 		{
@@ -236,7 +221,6 @@ func TestGetCidrBlock(t *testing.T) {
 				{IPRange: "10.0.0.0/24"},
 			},
 			existingK8s:    []*godo.KubernetesCluster{},
-			allocatedCidrs: []string{},
 			expectedPrefix: "10.0.4.0/22",
 			expectError:    false,
 		},
@@ -250,7 +234,6 @@ func TestGetCidrBlock(t *testing.T) {
 				{IPRange: "10.2.0.0/16"},
 			},
 			existingK8s:    []*godo.KubernetesCluster{},
-			allocatedCidrs: []string{},
 			expectedPrefix: "10.3.0.0/16",
 			expectError:    false,
 		},
@@ -264,7 +247,6 @@ func TestGetCidrBlock(t *testing.T) {
 				{IPRange: "172.18.0.0/17"},
 			},
 			existingK8s:    []*godo.KubernetesCluster{},
-			allocatedCidrs: []string{},
 			expectedPrefix: "172.19.0.0/16",
 			expectError:    false,
 		},
@@ -278,7 +260,6 @@ func TestGetCidrBlock(t *testing.T) {
 				{IPRange: "192.170.0.0/17"},
 			},
 			existingK8s:    []*godo.KubernetesCluster{},
-			allocatedCidrs: []string{},
 			expectedPrefix: "192.171.0.0/16",
 			expectError:    false,
 		},
@@ -292,7 +273,6 @@ func TestGetCidrBlock(t *testing.T) {
 				{IPRange: "10.0.2.0/24"},
 			},
 			existingK8s:    []*godo.KubernetesCluster{},
-			allocatedCidrs: []string{},
 			expectedPrefix: "10.0.3.0/24",
 			expectError:    false,
 		},
@@ -306,7 +286,6 @@ func TestGetCidrBlock(t *testing.T) {
 			existingK8s: []*godo.KubernetesCluster{
 				{ClusterSubnet: "10.0.1.0/24", ServiceSubnet: "10.0.2.0/24"},
 			},
-			allocatedCidrs: []string{},
 			expectedPrefix: "10.0.3.0/24",
 			expectError:    false,
 		},
@@ -316,7 +295,6 @@ func TestGetCidrBlock(t *testing.T) {
 			prefixLength:   24,
 			existingVPCs:   []*godo.VPC{},
 			existingK8s:    []*godo.KubernetesCluster{},
-			allocatedCidrs: []string{},
 			expectError:    true,
 		},
 		{
@@ -325,7 +303,6 @@ func TestGetCidrBlock(t *testing.T) {
 			prefixLength:   24,
 			existingVPCs:   []*godo.VPC{},
 			existingK8s:    []*godo.KubernetesCluster{},
-			allocatedCidrs: []string{},
 			expectError:    true,
 		},
 		{
@@ -334,7 +311,6 @@ func TestGetCidrBlock(t *testing.T) {
 			prefixLength:   33,
 			existingVPCs:   []*godo.VPC{},
 			existingK8s:    []*godo.KubernetesCluster{},
-			allocatedCidrs: []string{},
 			expectError:    true,
 		},
 		{
@@ -343,7 +319,6 @@ func TestGetCidrBlock(t *testing.T) {
 			prefixLength:   24,
 			existingVPCs:   []*godo.VPC{},
 			existingK8s:    []*godo.KubernetesCluster{},
-			allocatedCidrs: []string{},
 			expectError:    true,
 		},
 	}
@@ -363,8 +338,10 @@ func TestGetCidrBlock(t *testing.T) {
 				clusters: tt.existingK8s,
 			}
 
+			assigner := NewCidrAssigner(context.Background(), client)
+
 			// Call the function
-			cidr, err := GetCidrBlock(context.Background(), client, tt.baseNetwork, tt.prefixLength, tt.allocatedCidrs)
+			cidr, err := assigner.GetCidrBlock(tt.baseNetwork, tt.prefixLength)
 
 			// Check results
 			if tt.expectError {

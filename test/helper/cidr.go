@@ -4,43 +4,68 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 
 	"github.com/digitalocean/godo"
 )
 
+// CidrAssigner manages CIDR block allocation.
+type CidrAssigner struct {
+	ctx            context.Context
+	client         *godo.Client
+	allocatedCidrs []string
+}
 
-// GetVpcCidr returns a free CIDR block for VPCs using a /24 prefix length
-func GetVpcCidr(ctx context.Context, client *godo.Client, allocatedCidrs ...string) (string, error) {
-	cidr, err := GetCidrBlock(ctx, client, "10.0.0.0", 24, allocatedCidrs)
+// NewCidrAssigner creates a new CidrAssigner.
+func NewCidrAssigner(ctx context.Context, client *godo.Client) *CidrAssigner {
+	return &CidrAssigner{
+		ctx:    ctx,
+		client: client,
+	}
+}
+
+// GetVpcCidr returns a free CIDR block for VPCs using a /24 prefix length.
+// It will fatal the test if a CIDR cannot be assigned.
+func (ca *CidrAssigner) GetVpcCidr() string {
+	cidr, err := ca.GetCidrBlock("10.0.0.0", 24)
+	if err != nil {
+		log.Fatalf("failed to get VPC CIDR: %v", err)
+	}
+	return cidr
+}
+
+// GetDoksClusterCidr returns a free CIDR block for DOKS cluster network using a /19 prefix length.
+// It will fatal the test if a CIDR cannot be assigned.
+func (ca *CidrAssigner) GetDoksClusterCidr() string {
+	cidr, err := ca.GetCidrBlock("10.0.0.0", 19)
+	if err != nil {
+		log.Fatalf("failed to get DOKS cluster CIDR: %v", err)
+	}
+	return cidr
+}
+
+// GetDoksServiceCidr returns a free CIDR block for DOKS service network using a /22 prefix length.
+// It will fatal the test if a CIDR cannot be assigned.
+func (ca *CidrAssigner) GetDoksServiceCidr() string {
+	cidr, err := ca.GetCidrBlock("10.0.0.0", 22)
+	if err != nil {
+		log.Fatalf("failed to get DOKS service CIDR: %v", err)
+	}
+	return cidr
+}
+
+// GetCidrBlock returns a non-overlapping CIDR block and tracks it.
+func (ca *CidrAssigner) GetCidrBlock(baseNetwork string, prefixLength int) (string, error) {
+	cidr, err := getCidrBlock(ca.ctx, ca.client, baseNetwork, prefixLength, ca.allocatedCidrs)
 	if err != nil {
 		return "", err
 	}
-	return cidr, nil
-}
-	
-
-// GetDoksClusterCidr returns a free CIDR block for DOKS cluster network using a /19 prefix length
-func GetDoksClusterCidr(ctx context.Context, client *godo.Client, allocatedCidrs ...string) (string, error) {
-	cidr, err := GetCidrBlock(ctx, client, "10.0.0.0", 19, allocatedCidrs)
-	if err != nil {
-		return "", err
-	}
+	ca.allocatedCidrs = append(ca.allocatedCidrs, cidr)
 	return cidr, nil
 }
 
-
-// GetDoksServiceCidr returns a free CIDR block for DOKS service network using a /22 prefix length
-func GetDoksServiceCidr(ctx context.Context, client *godo.Client, allocatedCidrs ...string) (string, error) {
-	cidr, err := GetCidrBlock(ctx, client, "10.0.0.0", 22, allocatedCidrs)
-	if err != nil {
-		return "", err
-	}
-	return cidr, nil
-}
-
-
-// GetCidrBlock returns a non-overlapping CIDR block for deploying Terraform-based reference architectures.
+// getCidrBlock returns a non-overlapping CIDR block for deploying Terraform-based reference architectures.
 // It dynamically assigns a new CIDR block based on existing VPCs and Kubernetes clusters in the DigitalOcean account.
 //
 // Parameters:
@@ -52,7 +77,7 @@ func GetDoksServiceCidr(ctx context.Context, client *godo.Client, allocatedCidrs
 // Returns:
 //   - A string containing the next available CIDR block (e.g., "10.0.1.0/24")
 //   - An error if no available block is found or if API calls fail
-func GetCidrBlock(ctx context.Context, client *godo.Client, baseNetwork string, prefixLength int, allocatedCidrs []string) (string, error) {
+func getCidrBlock(ctx context.Context, client *godo.Client, baseNetwork string, prefixLength int, allocatedCidrs []string) (string, error) {
 	// Validate inputs
 	if client == nil {
 		return "", errors.New("godo client cannot be nil")

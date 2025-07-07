@@ -91,6 +91,7 @@ func TestApplyAndDestroy(t *testing.T) {
 		MixedVars: []terraform.Var{
 			terraform.VarFile("test.tfvars"),
 			terraform.VarInline("name_prefix", testNamePrefix),
+			terraform.VarInline("name_prefix", testNamePrefix),
 		},
 		NoColor: true,
 	})
