@@ -85,17 +85,28 @@ func TestApplyAndDestroy(t *testing.T) {
 		t.Fatalf("Failed to copy tfvars file: %v", err)
 	}
 
+	ctx := context.Background()
+	client := helper.CreateGodoClient()
+	sshKey := helper.CreateSshKey(client, testNamePrefix)
+	cidrAssigner := helper.NewCidrAssigner(ctx, client)
+
 	// Configure Terraform options
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: testDir,
 		MixedVars: []terraform.Var{
 			terraform.VarFile("test.tfvars"),
 			terraform.VarInline("name_prefix", testNamePrefix),
+			terraform.VarInline("do_vpc_cidr", cidrAssigner.GetVpcCidr()),
+			terraform.VarInline("doks_cluster_subnet", cidrAssigner.GetDoksClusterCidr()),
+			terraform.VarInline("doks_service_subnet", cidrAssigner.GetDoksServiceCidr()),
+			terraform.VarInline("droplet_ssh_keys", []int{sshKey.ID}),
 		},
 		NoColor: true,
 	})
-
-	defer helper.TerraformDestroyVpcWithMembers(t, terraformOptions)
+	defer func() {
+		helper.TerraformDestroyVpcWithMembers(t, terraformOptions)
+		helper.DeleteSshKey(client, sshKey.ID)
+	}()
 	terraform.InitAndApply(t, terraformOptions)
 
 	// Create an EC2 client and verify that the VPN comes up

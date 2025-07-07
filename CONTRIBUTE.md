@@ -255,6 +255,37 @@ func TestApplyAndDestroy(t *testing.T) {
 
 This pattern ensures an end-to-end lifecycle test, validating deployment, functionality (if added), and cleanup.
 
+### **Test Helper Package**
+
+The `test/helper` package provides a collection of utility functions and structs to facilitate integration testing of the Terraform modules. These helpers interact with the DigitalOcean API to create and manage resources required for tests.
+
+#### **Helper Functions**
+
+These are standalone functions for creating and managing test resources.
+
+| Function                             | Description                                                                                              |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| `NewCidrAssigner(...)`               | Creates a new `CidrAssigner` for allocating non-overlapping CIDR blocks.                                   |
+| `CreateGodoClient()`                 | Creates and returns a DigitalOcean API client.                                                           |
+| `CreateTestDomain(...)`              | Creates a test domain for integration tests.                                                             |
+| `DeleteTestDomain(...)`              | Deletes a test domain created for integration tests.                                                     |
+| `CreateSshKey(...)`                  | Creates a new SSH key for use in tests.                                                                  |
+| `DeleteSshKey(...)`                  | Deletes an SSH key.                                                                                      |
+| `TerraformDestroyVpcWithMembers(...)`| A helper function to ensure that a VPC and its member resources are properly destroyed after a test run. |
+
+#### **CidrAssigner**
+
+The `CidrAssigner` struct manages the allocation of CIDR blocks for VPCs and Kubernetes clusters to avoid network conflicts during testing. It is created by the `NewCidrAssigner` helper function.
+
+**Methods**
+
+| Method                   | Description                                                                 |
+| ------------------------ | --------------------------------------------------------------------------- |
+| `GetVpcCidr()`           | Allocates and returns a new CIDR block for a VPC.                           |
+| `GetDoksClusterCidr()`   | Allocates and returns a new CIDR block for a DOKS cluster.                  |
+| `GetDoksServiceCidr()`   | Allocates and returns a new CIDR block for a DOKS service.                  |
+| `GetCidrBlock(...)`      | A generic function to get a CIDR block that does not overlap with existing ones. |
+
 #### **CI Integration**
 
 Each RA must define two GitHub Actions workflows under `.github/workflows/`:
