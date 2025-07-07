@@ -1,4 +1,4 @@
-name_prefix          = "jkeegan-pnc-test"
+name_prefix          = "pnc-test"
 do_region            = "sfo3"
 doks_cluster_subnet  = "172.16.0.0/16"
 doks_service_subnet  = "172.17.0.0/16"
