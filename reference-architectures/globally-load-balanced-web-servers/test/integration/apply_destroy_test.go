@@ -1,7 +1,10 @@
 package integration
 
 import (
+	"context"
 	"fmt"
+	"path/filepath"
+
 	"github.com/digitalocean/scale-with-simplicity/test/constant"
 	"github.com/digitalocean/scale-with-simplicity/test/helper"
 	"github.com/gruntwork-io/terratest/modules/files"
@@ -9,7 +12,6 @@ import (
 	"github.com/gruntwork-io/terratest/modules/random"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	test_structure "github.com/gruntwork-io/terratest/modules/test-structure"
-	"path/filepath"
 
 	"strings"
 	"testing"
@@ -25,21 +27,47 @@ func TestApplyAndDestroy(t *testing.T) {
 		t.Fatalf("Failed to copy tfvars file: %v", err)
 	}
 
+	ctx := context.Background()
 	client := helper.CreateGodoClient()
 	testDomainFqdn := helper.CreateTestDomain(client, constant.TestRootSubdomain, testNamePrefix)
 	sshKey := helper.CreateSshKey(client, testNamePrefix)
+	var vpcCidrs []string
+	for i := 0; i < 3; i++ {
+		cidr, err := helper.GetVpcCidr(ctx, client, vpcCidrs...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		vpcCidrs = append(vpcCidrs, cidr)
+	}
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: testDir,
 		MixedVars: []terraform.Var{
 			terraform.VarFile("test.tfvars"),
 			terraform.VarInline("name_prefix", testNamePrefix),
 			terraform.VarInline("domain", testDomainFqdn),
-			terraform.VarInline("ssh_key", sshKey.Name)},
+			terraform.VarInline("ssh_key", sshKey.Name),
+			terraform.VarInline("vpcs", []interface{}{
+				map[string]interface{}{
+					"region":   "nyc3",
+					"ip_range": vpcCidrs[0],
+				},
+				map[string]interface{}{
+					"region":   "sfo3",
+					"ip_range": vpcCidrs[1],
+				},
+				map[string]interface{}{
+					"region":   "ams3",
+					"ip_range": vpcCidrs[2],
+				},
+			}),
+		},
 		NoColor: true,
 	})
-	defer helper.TerraformDestroyVpcWithMembers(t, terraformOptions)
-	defer helper.DeleteTestDomain(client, constant.TestRootSubdomain, testNamePrefix)
-	//defer helper.DeleteSshKey(client, sshKey.ID)
+	defer func() {
+		helper.TerraformDestroyVpcWithMembers(t, terraformOptions)
+		helper.DeleteTestDomain(client, constant.TestRootSubdomain, testNamePrefix)
+		helper.DeleteSshKey(client, sshKey.ID)
+	}()
 
 	terraform.InitAndApply(t, terraformOptions)
 
