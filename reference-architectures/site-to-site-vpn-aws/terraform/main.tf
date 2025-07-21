@@ -29,7 +29,6 @@ resource "digitalocean_reserved_ip" "vpn_gateway" {
 module "do_vpn_droplet" {
   source               = "github.com/digitalocean/terraform-digitalocean-ipsec-gateway?ref=v1.1.0"
   name                 = "${var.name_prefix}-vgw"
-  image                = var.droplet_image
   size                 = var.droplet_size
   region               = var.do_region
   vpc_id               = digitalocean_vpc.vpn.id

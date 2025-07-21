@@ -13,16 +13,6 @@ variable "droplet_size" {
   type        = string
 }
 
-variable "droplet_image" {
-  description = "DO image slug to run on the droplet, must be ubuntu based."
-  type        = string
-
-  validation {
-    condition     = startswith(var.droplet_image, "ubuntu")
-    error_message = "The image slug must start with 'ubuntu'."
-  }
-}
-
 variable "droplet_ssh_keys" {
   description = "A list of SSH key IDs to enable in the format [12345, 123456]"
   type        = list(number)
