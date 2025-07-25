@@ -45,17 +45,17 @@ resource "digitalocean_kubernetes_cluster" "primary_cluster" {
   cluster_subnet                   = var.doks_cluster_subnet
   service_subnet                   = var.doks_service_subnet
   destroy_all_associated_resources = true
-  ha = var.doks_control_plane_ha
+  ha                               = var.doks_control_plane_ha
   routing_agent {
     enabled = true
   }
   tags = local.tags
   node_pool {
-    name = "${var.name_prefix}-${data.digitalocean_sizes.slug_2vcpu_4gb.sizes[0].slug}"
+    name       = "${var.name_prefix}-${data.digitalocean_sizes.slug_2vcpu_4gb.sizes[0].slug}"
     size       = data.digitalocean_sizes.slug_2vcpu_4gb.sizes[0].slug
     auto_scale = true
-    min_nodes = var.doks_node_pool_min_nodes
-    max_nodes = var.doks_node_pool_max_nodes
-    tags = local.tags
+    min_nodes  = var.doks_node_pool_min_nodes
+    max_nodes  = var.doks_node_pool_max_nodes
+    tags       = local.tags
   }
 }

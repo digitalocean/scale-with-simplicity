@@ -10,7 +10,7 @@ data "digitalocean_vpc" "doks" {
 }
 
 data "digitalocean_kubernetes_cluster" "doks_cluster" {
-  name  = var.name_prefix
+  name = var.name_prefix
 }
 
 provider "kubernetes" {
@@ -33,14 +33,14 @@ provider "helm" {
 
 # AdService Postgres DB
 resource "digitalocean_database_cluster" "adservice" {
-  name       = "${var.name_prefix}-adservice-pg"
-  engine     = "pg"
-  version    = "17"
-  size       = "db-s-1vcpu-1gb"
-  region     = var.region
-  node_count = 1
+  name                 = "${var.name_prefix}-adservice-pg"
+  engine               = "pg"
+  version              = "17"
+  size                 = "db-s-1vcpu-1gb"
+  region               = var.region
+  node_count           = 1
   private_network_uuid = data.digitalocean_vpc.doks.id
-  tags = local.tags
+  tags                 = local.tags
 }
 
 
@@ -62,25 +62,25 @@ resource "kubernetes_config_map_v1" "adservice_database_configuration" {
   }
   data = {
     postgres-password = digitalocean_database_cluster.adservice.password
-    DB_HOST: digitalocean_database_cluster.adservice.private_host
-    DB_NAME: digitalocean_database_cluster.adservice.database
-    DB_PORT: digitalocean_database_cluster.adservice.port
-    DB_SSL_MODE: "require"
-    DB_USER: digitalocean_database_cluster.adservice.user
+    DB_HOST : digitalocean_database_cluster.adservice.private_host
+    DB_NAME : digitalocean_database_cluster.adservice.database
+    DB_PORT : digitalocean_database_cluster.adservice.port
+    DB_SSL_MODE : "require"
+    DB_USER : digitalocean_database_cluster.adservice.user
   }
 }
 
 
 # CartService ValKey DB
 resource "digitalocean_database_cluster" "cart_service" {
-  name       = "${var.name_prefix}-cart-service-valkey"
-  engine     = "valkey"
-  version    = "8"
-  size       = "db-s-1vcpu-1gb"
-  region     = var.region
-  node_count = 1
+  name                 = "${var.name_prefix}-cart-service-valkey"
+  engine               = "valkey"
+  version              = "8"
+  size                 = "db-s-1vcpu-1gb"
+  region               = var.region
+  node_count           = 1
   private_network_uuid = data.digitalocean_vpc.doks.id
-  tags = local.tags
+  tags                 = local.tags
 }
 
 resource "kubernetes_secret_v1" "cart_database" {
@@ -100,8 +100,8 @@ resource "helm_release" "microservices_demo" {
   name  = "demo"
   set = [
     {
-      name: "devDeployment"
-      value: "false"
+      name : "devDeployment"
+      value : "false"
     }
   ]
 }
@@ -112,13 +112,13 @@ data "http" "kube_prometheus_stack_values" {
 }
 
 resource "helm_release" "kube_prometheus_stack" {
-  name = "kube-prometheus-stack"
-  repository = "https://prometheus-community.github.io/helm-charts"
-  chart      = "kube-prometheus-stack"
-  version    = "75.9.0"
-  namespace = "kube-prometheus-stack"
+  name             = "kube-prometheus-stack"
+  repository       = "https://prometheus-community.github.io/helm-charts"
+  chart            = "kube-prometheus-stack"
+  version          = "75.9.0"
+  namespace        = "kube-prometheus-stack"
   create_namespace = true
-  values = [data.http.kube_prometheus_stack_values.response_body]
+  values           = [data.http.kube_prometheus_stack_values.response_body]
 }
 
 data "http" "metrics_server_values" {
@@ -126,13 +126,13 @@ data "http" "metrics_server_values" {
 }
 
 resource "helm_release" "metrics_server" {
-  name = "metrics-server"
-  repository = "https://kubernetes-sigs.github.io/metrics-server"
-  chart      = "metrics-server"
-  version    = "3.12.2"
-  namespace = "metrics-server"
+  name             = "metrics-server"
+  repository       = "https://kubernetes-sigs.github.io/metrics-server"
+  chart            = "metrics-server"
+  version          = "3.12.2"
+  namespace        = "metrics-server"
   create_namespace = true
-  values = [data.http.metrics_server_values.response_body]
+  values           = [data.http.metrics_server_values.response_body]
 }
 
 

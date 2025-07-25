@@ -2,9 +2,16 @@ MAKEFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 MAKEFILE_DIR := $(dir $(MAKEFILE_PATH))
 TEST_SCRIPT_DIR := $(realpath $(MAKEFILE_DIR)/../../test/scripts)
 
+.PHONY: tf-validate-cluster
+tf-validate-cluster:
+	@cd terraform/cluster &&  $(TEST_SCRIPT_DIR)/terraform-validate.sh
+
+.PHONY: tf-validate-environment
+tf-validate-environment:
+	@cd terraform/environment &&  $(TEST_SCRIPT_DIR)/terraform-validate.sh
+
 .PHONY: tf-validate
-tf-validate:
-	@cd terraform && $(TEST_SCRIPT_DIR)/terraform-validate.sh
+tf-validate: tf-validate-cluster tf-validate-environment
 
 .PHONY: tflint
 tflint:
