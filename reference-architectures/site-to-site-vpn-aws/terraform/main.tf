@@ -2,6 +2,7 @@ provider "aws" {
   region = var.aws_region
 }
 
+# Tag definitions for use on AWS and DigitalOcean resources
 locals {
   aws_tags = {
     ReferenceArchitecture : "site-to-site-vpn-aws"
@@ -14,18 +15,24 @@ locals {
 }
 
 ####
-# DO Side
+# DigitalOcean Side
 ####
+
+# Create a VPC on DigitalOcean for VPN resources
 resource "digitalocean_vpc" "vpn" {
   name     = var.name_prefix
   region   = var.do_region
   ip_range = var.do_vpc_cidr
 }
 
+# Reserve a static public IP on DO to assign to the VPN droplet
 resource "digitalocean_reserved_ip" "vpn_gateway" {
   region = var.do_region
 }
 
+# Launch a VPN gateway droplet and configure IPsec
+# This uses the terraform-digitalocean-ipsec-gateway module:
+# https://github.com/digitalocean/terraform-digitalocean-ipsec-gateway
 module "do_vpn_droplet" {
   source               = "github.com/digitalocean/terraform-digitalocean-ipsec-gateway?ref=v1.1.0"
   name                 = "${var.name_prefix}-vgw"
@@ -42,30 +49,32 @@ module "do_vpn_droplet" {
   vpn_psk              = var.vpn_psk
 }
 
+# Lookup the latest DigitalOcean Kubernetes versions
+# Used for creating the test DOKS cluster
 data "digitalocean_kubernetes_versions" "vpn_test" {}
 
+# Pick the cheapest droplet size with at least 2 vCPUs and 4 GB RAM in the selected region
+# Used for DOKS node pool size
 data "digitalocean_sizes" "main" {
   filter {
     key    = "vcpus"
     values = [2]
   }
-
   filter {
     key    = "memory"
     values = [4096]
   }
-
   filter {
     key    = "regions"
     values = [var.do_region]
   }
-
   sort {
     key       = "price_monthly"
     direction = "asc"
   }
 }
 
+# Launch a test DOKS cluster in the DO VPC to test cross-cloud VPN connectivity
 resource "digitalocean_kubernetes_cluster" "vpn_test" {
   name           = var.name_prefix
   region         = var.do_region
@@ -74,9 +83,11 @@ resource "digitalocean_kubernetes_cluster" "vpn_test" {
   service_subnet = var.doks_service_subnet
   vpc_uuid       = digitalocean_vpc.vpn.id
   tags           = local.do_tags
+
   routing_agent {
     enabled = true
   }
+
   node_pool {
     name       = "${var.name_prefix}-nodepool"
     size       = data.digitalocean_sizes.main.sizes[0].slug
@@ -85,10 +96,13 @@ resource "digitalocean_kubernetes_cluster" "vpn_test" {
   }
 }
 
-
 ####
 # AWS Side
 ####
+
+# Create a VPC in AWS with private subnets and attach a VPN gateway
+# Uses the terraform-aws-modules/vpc module:
+# https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws/latest
 module "aws_vpc" {
   source                             = "terraform-aws-modules/vpc/aws"
   version                            = "~> 5.21"
@@ -101,11 +115,13 @@ module "aws_vpc" {
   propagate_private_route_tables_vgw = true
 }
 
+# Lookup latest Amazon Linux ARM64 image
+# Used for testing the VPN from an AWS instance
 data "aws_ami" "amazon_linux_arm" {
   most_recent = true
   filter {
     name   = "name"
-    values = ["amzn2-ami-hvm-*-arm64-gp2"] # Amazon Linux 2 ARM64
+    values = ["amzn2-ami-hvm-*-arm64-gp2"]
   }
   filter {
     name   = "architecture"
@@ -115,9 +131,10 @@ data "aws_ami" "amazon_linux_arm" {
     name   = "virtualization-type"
     values = ["hvm"]
   }
-  owners = ["137112412989"] # Amazon
+  owners = ["137112412989"]
 }
 
+# Allow ICMP ping for connectivity testing
 resource "aws_security_group" "allow_ping" {
   name        = "${var.name_prefix}-allow-ping"
   description = "Allow ICMP ping from anywhere"
@@ -138,6 +155,7 @@ resource "aws_security_group" "allow_ping" {
   tags = local.aws_tags
 }
 
+# Launch a tiny ARM instance in the AWS VPC to test VPN reachability
 resource "aws_instance" "t4g_nano" {
   ami                         = data.aws_ami.amazon_linux_arm.id
   instance_type               = "t4g.nano"
@@ -147,6 +165,7 @@ resource "aws_instance" "t4g_nano" {
   tags                        = local.aws_tags
 }
 
+# Create a Customer Gateway in AWS pointing to the DO VPN public IP
 resource "aws_customer_gateway" "gateway" {
   device_name = "${var.name_prefix}-vgw"
   bgp_asn     = 65000
@@ -155,6 +174,9 @@ resource "aws_customer_gateway" "gateway" {
   tags        = local.aws_tags
 }
 
+# Create the VPN connection from AWS to the DO VPN gateway
+# Uses the terraform-aws-modules/vpn-gateway module:
+# https://registry.terraform.io/modules/terraform-aws-modules/vpn-gateway/aws/latest
 module "vpn_gateway" {
   source                                    = "terraform-aws-modules/vpn-gateway/aws"
   version                                   = "~> 3.7"
@@ -168,12 +190,12 @@ module "vpn_gateway" {
   vpn_connection_static_routes_destinations = [var.do_vpc_cidr]
   tunnel1_inside_cidr                       = "169.254.104.100/30"
   tunnel1_preshared_key                     = var.vpn_psk
-  # Even through we are using a single tunnel this TF module from AWS doesn't work quite right unless we specify tunnel2 items
-  tunnel2_inside_cidr   = "169.254.104.104/30"
-  tunnel2_preshared_key = var.vpn_psk
-  tags                  = local.aws_tags
+  tunnel2_inside_cidr                       = "169.254.104.104/30"
+  tunnel2_preshared_key                     = var.vpn_psk
+  tags                                      = local.aws_tags
 }
 
+# Route DOKS cluster subnet into the VPN connection so AWS can reach DO workloads
 resource "aws_vpn_connection_route" "doks_route" {
   destination_cidr_block = digitalocean_kubernetes_cluster.vpn_test.cluster_subnet
   vpn_connection_id      = module.vpn_gateway.vpn_connection_id

@@ -15,9 +15,25 @@ This repository provides a reference architecture and Terraform-based implementa
     * An **AWS Site-to-Site VPN** Gateway (Virtual Private Gateway attached to the VPC) and a **Customer Gateway** configuration pointing at the DigitalOcean Reserved IP.
     * **Static routes** injected into the AWS VPC route table for directing traffic destined to the DigitalOcean VPC and DOKS CIDRs through the VPN.
 
+## Submodules Used
+
+### [terraform-digitalocean-ipsec-gateway](https://github.com/digitalocean/terraform-digitalocean-ipsec-gateway)
+This module provisions a DigitalOcean Droplet as an IPSec VPN gateway with:
+- StrongSwan configuration
+- Cloud-init setup for tunnel IPs, remote public IP, PSK, and static routes
+- Default port forwarding and firewall settings
+- Compatibility with AWS Site-to-Site VPN
+
+### [terraform-aws-modules/vpn-gateway](https://registry.terraform.io/modules/terraform-aws-modules/vpn-gateway/aws/latest)
+This module automates the creation of a VPN connection on AWS and associates it with:
+- A Virtual Private Gateway
+- A Customer Gateway pointing to the DigitalOcean VPN public IP
+- Static routes between the VPC and remote CIDR
+
+
 ## Production Architecture Considerations
 
-Terraform can't configure a Kubernetes cluster in the same session used to create the cluster. While this reference architecture is setup to create everything as part of the same session this is just for example purposes. The recommended approach would be to create the DO and AWS VPCs and DOKS clusters using a separate module to be applied separately. Once those are created, then have a separate module to create the site-to-site VPN. As part of the VPN module you can have Terraform also create the routes in the DOKS cluster using the [Kubernetes Provider](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs)].
+Terraform can't configure a Kubernetes cluster in the same session used to create the cluster. While this reference architecture is setup to create everything as part of the same session this is just for example purposes. The recommended approach would be to create the DO and AWS VPCs and DOKS clusters using a separate module to be applied separately. Once those are created, then have a separate module to create the site-to-site VPN. As part of the VPN module you can have Terraform also create the routes in the DOKS cluster using the [Kubernetes Provider](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs).
 
 ## Prerequisites
 
