@@ -17,6 +17,24 @@ This Terraform module provisions a complete, highly available (HA) end-to-end co
 3. **Test EC2 Instance & DOKS Route**
     * A t4g.nano EC2 instance for connectivity testing.
 
+## Submodules Used
+
+### [terraform-digitalocean-partner-network-connect-aws](https://github.com/digitalocean/terraform-digitalocean-partner-network-connect-aws)
+This module provisions private connectivity between DigitalOcean and AWS using Megaport’s global network. It handles:
+
+- Provisioning a **Megaport Cloud Router (MCR)** in a chosen Megaport location
+- Creating a **Virtual Cross Connect (VXC)** between the MCR and AWS’s **Virtual Private Gateway (VGW)**
+- Configuring **BGP peering** between the DigitalOcean side and AWS side using user-supplied tunnel IPs and a shared BGP secret
+- Setting up **redundancy zones** (e.g. red/blue) with optional high availability support
+- Linking additional connections to the primary (via `parent_uuid`) for HA topologies
+- Tagging and route propagation compatible with both clouds
+
+### [terraform-aws-modules/vpn-gateway](https://registry.terraform.io/modules/terraform-aws-modules/vpn-gateway/aws/latest)
+This module automates the creation of a VPN connection on AWS and associates it with:
+- A Virtual Private Gateway
+- A Customer Gateway pointing to the DigitalOcean VPN public IP
+- Static routes between the VPC and remote CIDR
+
 ## Prerequisites
 
 * Terraform v1.2+ installed
