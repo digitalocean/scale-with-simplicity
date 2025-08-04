@@ -83,15 +83,72 @@ resource "digitalocean_database_cluster" "cart_service" {
   tags                 = local.tags
 }
 
+data "digitalocean_database_ca" "cart_service" {
+  cluster_id = digitalocean_database_cluster.cart_service.id
+}
+
 resource "kubernetes_secret_v1" "cart_database" {
   metadata {
     name      = "cartservice-database"
     namespace = "default"
   }
   data = {
+    caCert = data.digitalocean_database_ca.cart_service.certificate
     connectionString = digitalocean_database_cluster.cart_service.private_uri
+    password = digitalocean_database_cluster.cart_service.password
+    username = digitalocean_database_cluster.cart_service.user
   }
   type = "Opaque"
+}
+
+resource "kubernetes_manifest" "cart_database_scrape_config" {
+  manifest = {
+    apiVersion = "monitoring.coreos.com/v1alpha1"
+    kind       = "ScrapeConfig"
+    metadata = {
+      name      = "cart-database"
+      namespace = "default"
+      labels = {
+        # Label used to discover ScrapeConfigs matching the name of helm_release
+        release = "kube-prometheus-stack"
+      }
+    }
+    spec = {
+      jobName         = "cartservice-database"
+      scheme           = "HTTPS"
+      tlsConfig = {
+        ca = {
+          secret = {
+            name = "cartservice-database"
+            key  = "caCert"
+          }
+        }
+      }
+      metricsPath     = "/metrics"
+      scrapeInterval  = "30s"
+      staticConfigs = [
+        {
+          targets = [
+            # There isn't a way to get the metrics port from the API using Terraform the docs show port 9273
+            # and I've look at a few DBs and it's all the same port, so hopefully this will always work.
+            # Telegraf, when configured to expose metrics for Prometheus scraping, uses TCP port 9273 by default
+            # So seems likely to work.
+            "${digitalocean_database_cluster.cart_service.host}:9273"
+          ]
+        }
+      ]
+      basicAuth = {
+        username = {
+          name = "cartservice-database"
+          key  = "username"
+        }
+        password = {
+          name = "cartservice-database"
+          key  = "password"
+        }
+      }
+    }
+  }
 }
 
 # microservices-demo app
