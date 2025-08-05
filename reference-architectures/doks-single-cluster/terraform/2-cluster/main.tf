@@ -20,8 +20,21 @@ provider "helm" {
   }
 }
 
+# DO API Access Token for controllers that need to interact with DO API
+resource "kubernetes_secret_v1" "digitalocean_access_token" {
+  metadata {
+    name      = "digitalocean-access-token"
+    namespace = "kube-system"
+  }
+  data = {
+    token = var.digitalocean_access_token
+  }
+  type = "Opaque"
+}
 
-# Marketplace apps
+
+
+# DO Marketplace app
 data "http" "kube_prometheus_stack_values" {
   url = "https://raw.githubusercontent.com/digitalocean/marketplace-kubernetes/master/stacks/kube-prometheus-stack/values.yml"
 }
@@ -36,6 +49,7 @@ resource "helm_release" "kube_prometheus_stack" {
   values           = [data.http.kube_prometheus_stack_values.response_body]
 }
 
+# DO Marketplace app
 data "http" "metrics_server_values" {
   url = "https://raw.githubusercontent.com/digitalocean/marketplace-kubernetes/master/stacks/metrics-server/values.yml"
 }
@@ -50,3 +64,27 @@ resource "helm_release" "metrics_server" {
   values           = [data.http.metrics_server_values.response_body]
 }
 
+# External DNS
+resource "helm_release" "external_dns" {
+  name             = "external-dns"
+  repository       = "https://kubernetes-sigs.github.io/external-dns"
+  chart            = "external-dns"
+  namespace        = "kube-system"
+  values = [yamlencode({
+    provider = {
+      name = "digitalocean"
+    }
+
+    env = [
+      {
+        name = "DO_TOKEN"
+        valueFrom = {
+          secretKeyRef = {
+            name = "digitalocean-access-token"
+            key  = "token"
+          }
+        }
+      }
+    ]
+  })]
+}
