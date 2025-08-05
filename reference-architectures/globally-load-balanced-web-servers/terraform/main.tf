@@ -37,8 +37,8 @@ resource "digitalocean_certificate" "cert" {
 # https://github.com/digitalocean/terraform-digitalocean-glb-stack/blob/main/README.md
 # -------------------------------------------------------------------
 module "glb_stack" {
-  source             = "github.com/digitalocean/terraform-digitalocean-glb-stack?ref=v1.0.0"
-  name_prefix        = var.name_prefix
+  source      = "github.com/digitalocean/terraform-digitalocean-glb-stack?ref=v1.0.0"
+  name_prefix = var.name_prefix
 
   # Supply the list of region/VPC pairs the GLB stack should target.
   # We extract region + vpc_uuid from the multi-region VPC module output.
@@ -78,7 +78,7 @@ module "glb_stack" {
 
     domains = [{
       name       = var.domain
-      is_managed = true  # Let the module create/manage the DNS zone for the GLB host.
+      is_managed = true # Let the module create/manage the DNS zone for the GLB host.
     }]
 
     glb_settings = {
@@ -129,7 +129,7 @@ locals {
           droplet  = i
         }
       ]
-    ]) : pair.key => {
+      ]) : pair.key => {
       region   = pair.region
       vpc_uuid = pair.vpc_uuid
       droplet  = pair.droplet

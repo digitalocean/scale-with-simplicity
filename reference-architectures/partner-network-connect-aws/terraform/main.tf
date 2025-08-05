@@ -90,7 +90,7 @@ provider "megaport" {
 module "pnc_red" {
   source                     = "github.com/digitalocean/terraform-digitalocean-partner-network-connect-aws?ref=v1.0.0"
   name_prefix                = var.name_prefix
-  do_region                  = substr(var.do_region, 0, 3)  # Use short region code like nyc
+  do_region                  = substr(var.do_region, 0, 3) # Use short region code like nyc
   mp_contract_term_months    = var.mp_contract_term_months
   mcr_port_bandwidth_in_mbps = 1000
   vxc_bandwidth_in_mbps      = 1000
