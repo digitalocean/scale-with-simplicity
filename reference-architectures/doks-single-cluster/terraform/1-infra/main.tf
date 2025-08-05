@@ -63,3 +63,29 @@ resource "digitalocean_kubernetes_cluster" "primary_cluster" {
     tags       = local.tags
   }
 }
+
+### Databases
+# AdService Postgres DB
+resource "digitalocean_database_cluster" "adservice" {
+  name                 = "${var.name_prefix}-adservice-pg"
+  engine               = "pg"
+  version              = "17"
+  size                 = "db-s-1vcpu-1gb"
+  region               = var.region
+  node_count           = 1
+  private_network_uuid = digitalocean_vpc.doks.id
+  tags                 = local.tags
+}
+
+# CartService ValKey DB
+resource "digitalocean_database_cluster" "cart_service" {
+  name                 = "${var.name_prefix}-cartservice-valkey"
+  engine               = "valkey"
+  version              = "8"
+  size                 = "db-s-1vcpu-1gb"
+  region               = var.region
+  node_count           = 1
+  private_network_uuid = digitalocean_vpc.doks.id
+  tags                 = local.tags
+}
+
