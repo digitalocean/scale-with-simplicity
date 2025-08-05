@@ -71,6 +71,8 @@ resource "kubernetes_config_map_v1" "adservice_database_configuration" {
 }
 
 
+data "digitalocean_database_metrics_credentials" "default" {}
+
 # CartService ValKey DB
 resource "digitalocean_database_cluster" "cart_service" {
   name                 = "${var.name_prefix}-cart-service-valkey"
@@ -95,8 +97,8 @@ resource "kubernetes_secret_v1" "cart_database" {
   data = {
     caCert = data.digitalocean_database_ca.cart_service.certificate
     connectionString = digitalocean_database_cluster.cart_service.private_uri
-    password = digitalocean_database_cluster.cart_service.password
-    username = digitalocean_database_cluster.cart_service.user
+    password = data.digitalocean_database_metrics_credentials.default.password
+    username = data.digitalocean_database_metrics_credentials.default.username
   }
   type = "Opaque"
 }
@@ -129,11 +131,7 @@ resource "kubernetes_manifest" "cart_database_scrape_config" {
       staticConfigs = [
         {
           targets = [
-            # There isn't a way to get the metrics port from the API using Terraform the docs show port 9273
-            # and I've look at a few DBs and it's all the same port, so hopefully this will always work.
-            # Telegraf, when configured to expose metrics for Prometheus scraping, uses TCP port 9273 by default
-            # So seems likely to work.
-            "${digitalocean_database_cluster.cart_service.host}:9273"
+            split("/",  digitalocean_database_cluster.cart_service.metrics_endpoints[0])[2]
           ]
         }
       ]
@@ -192,4 +190,6 @@ resource "helm_release" "metrics_server" {
   values           = [data.http.metrics_server_values.response_body]
 }
 
-
+output "mon" {
+  value = digitalocean_database_cluster.cart_service.metrics_endpoints
+}
