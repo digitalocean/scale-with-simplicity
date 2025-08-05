@@ -6,6 +6,10 @@ resource "helm_release" "microservices_demo" {
     {
       name : "devDeployment"
       value : "false"
+    },
+    {
+      name : "frontend.fqdn"
+      value : var.fqdn
     }
   ]
 }

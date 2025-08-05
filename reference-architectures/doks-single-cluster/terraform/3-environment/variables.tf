@@ -3,7 +3,7 @@ variable "name_prefix" {
   type        = string
 }
 
-variable "region" {
-  description = "DO region slug for the region the droplet will be deployed into"
+variable "fqdn" {
+  description = "FQDN for the DNS record that will be created for the demo application. Must be a DO DNS managed domain."
   type        = string
 }

@@ -74,7 +74,6 @@ resource "helm_release" "external_dns" {
     provider = {
       name = "digitalocean"
     }
-
     env = [
       {
         name = "DO_TOKEN"
@@ -86,5 +85,7 @@ resource "helm_release" "external_dns" {
         }
       }
     ]
+    # Policy of sync means that external-dns will remove records it created when the corresponding service is also removed.
+    policy = "sync"
   })]
 }
