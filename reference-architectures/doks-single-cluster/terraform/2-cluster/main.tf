@@ -47,7 +47,7 @@ resource "helm_release" "cert_manager" {
 }
 
 
-# DO Marketplace app
+# DO Marketplace Config to get base configs needed to work with DOKS
 data "http" "kube_prometheus_stack_values" {
   url = "https://raw.githubusercontent.com/digitalocean/marketplace-kubernetes/master/stacks/kube-prometheus-stack/values.yml"
 }
@@ -56,14 +56,18 @@ resource "helm_release" "kube_prometheus_stack" {
   name             = "kube-prometheus-stack"
   repository       = "https://prometheus-community.github.io/helm-charts"
   chart            = "kube-prometheus-stack"
-  # Specifying version due to issue with Prom operator version and support for EndpointSlice
-  # See digitalocean_kubernetes_cluster resource in infra module for more details
-  version          = "75.9.0"
   namespace        = "kube-prometheus-stack"
   create_namespace = true
   values           = [data.http.kube_prometheus_stack_values.response_body]
+  set = [
+    {
+      name  = "prometheus.prometheusSpec.serviceDiscoveryRole"
+      value = "EndpointSlice"
+    }
+  ]
 }
 
+# DO Marketplace Config
 data "http" "metrics_server_values" {
   url = "https://raw.githubusercontent.com/digitalocean/marketplace-kubernetes/master/stacks/metrics-server/values.yml"
 }

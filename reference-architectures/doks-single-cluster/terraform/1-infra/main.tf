@@ -40,11 +40,7 @@ data "digitalocean_sizes" "slug_2vcpu_4gb" {
 resource "digitalocean_kubernetes_cluster" "primary_cluster" {
   name                             = var.name_prefix
   region                           = var.region
-  # Endpoints were depreciated in K8s 1.33 and discover must now use EndpointSlice
-  # latest Prom operator 0.84.0 (released 2025-07-14) does not yet support EndpointSlice, so using 1.32 for now
-  # https://github.com/prometheus-operator/prometheus-operator/issues/7582
-  version                          = "1.32.5-do.2"
-  # version                          = data.digitalocean_kubernetes_versions.all.latest_version
+  version                          = data.digitalocean_kubernetes_versions.all.latest_version
   vpc_uuid                         = digitalocean_vpc.doks.id
   cluster_subnet                   = var.doks_cluster_subnet
   service_subnet                   = var.doks_service_subnet
