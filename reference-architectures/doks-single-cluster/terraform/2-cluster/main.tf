@@ -32,6 +32,19 @@ resource "kubernetes_secret_v1" "digitalocean_access_token" {
   type = "Opaque"
 }
 
+# DO Marketplace app
+data "http" "cert_manager" {
+  url = "https://raw.githubusercontent.com/digitalocean/marketplace-kubernetes/master/stacks/cert-manager/values.yml"
+}
+
+resource "helm_release" "cert_manager" {
+  name             = "cert-manager"
+  repository       = "https://charts.jetstack.io"
+  chart            = "cert-manager"
+  namespace        = "cert-manager"
+  create_namespace = true
+  values           = [data.http.cert_manager.response_body]
+}
 
 
 # DO Marketplace app
@@ -43,13 +56,14 @@ resource "helm_release" "kube_prometheus_stack" {
   name             = "kube-prometheus-stack"
   repository       = "https://prometheus-community.github.io/helm-charts"
   chart            = "kube-prometheus-stack"
+  # Specifying version due to issue with Prom operator version and support for EndpointSlice
+  # See digitalocean_kubernetes_cluster resource in infra module for more details
   version          = "75.9.0"
   namespace        = "kube-prometheus-stack"
   create_namespace = true
   values           = [data.http.kube_prometheus_stack_values.response_body]
 }
 
-# DO Marketplace app
 data "http" "metrics_server_values" {
   url = "https://raw.githubusercontent.com/digitalocean/marketplace-kubernetes/master/stacks/metrics-server/values.yml"
 }
@@ -58,7 +72,6 @@ resource "helm_release" "metrics_server" {
   name             = "metrics-server"
   repository       = "https://kubernetes-sigs.github.io/metrics-server"
   chart            = "metrics-server"
-  version          = "3.12.2"
   namespace        = "metrics-server"
   create_namespace = true
   values           = [data.http.metrics_server_values.response_body]
