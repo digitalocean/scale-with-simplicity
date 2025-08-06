@@ -51,6 +51,10 @@ resource "helm_release" "cert_manager" {
   name             = "cert-manager"
   repository       = "https://charts.jetstack.io"
   chart            = "cert-manager"
+  # using older version to work around https://github.com/cert-manager/cert-manager/issues/6805
+  # Tried using the feature gate ACMEHTTP01IngressPathTypeExact, but was unable to get it to work
+  # Will revisit when we replace nginx-ingress with cilium-ingress in Q4.
+  version = "1.17.2"
   namespace        = "cluster-services"
   values           = [data.http.cert_manager.response_body]
 }
