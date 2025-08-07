@@ -42,11 +42,6 @@ resource "kubernetes_secret_v1" "digitalocean_access_token" {
   type = "Opaque"
 }
 
-# DO Marketplace Config
-data "http" "cert_manager" {
-  url = "https://raw.githubusercontent.com/digitalocean/marketplace-kubernetes/master/stacks/cert-manager/values.yml"
-}
-
 resource "helm_release" "cert_manager" {
   name             = "cert-manager"
   repository       = "https://charts.jetstack.io"
@@ -56,7 +51,12 @@ resource "helm_release" "cert_manager" {
   # Will revisit when we replace nginx-ingress with cilium-ingress in Q4.
   version = "1.17.2"
   namespace        = "cluster-services"
-  values           = [data.http.cert_manager.response_body]
+  set = [
+    {
+      name  = "installCRDs"
+      value = true
+    },
+  ]
 }
 
 # To be removed once Cilium Ingress is supported
@@ -102,13 +102,26 @@ resource "helm_release" "kube_prometheus_stack" {
     {
       name  = "prometheus.prometheusSpec.serviceDiscoveryRole"
       value = "EndpointSlice"
-    }
+    },
+    # kubeControllerManager runs on management cluster
+    {
+      name  = "defaultRules.rules.kubeControllerManager"
+      value = false
+    },
+    {
+      name  = "kubeControllerManager.enabled"
+      value = false
+    },
+    # kubeProxy replaced by Cilium
+    {
+      name  = "defaultRules.rules.kubeProxy"
+      value = false
+    },
+    {
+      name  = "kubeProxy.enabled"
+      value = false
+    },
   ]
-}
-
-# DO Marketplace Config
-data "http" "metrics_server_values" {
-  url = "https://raw.githubusercontent.com/digitalocean/marketplace-kubernetes/master/stacks/metrics-server/values.yml"
 }
 
 resource "helm_release" "metrics_server" {
@@ -116,7 +129,16 @@ resource "helm_release" "metrics_server" {
   repository       = "https://kubernetes-sigs.github.io/metrics-server"
   chart            = "metrics-server"
   namespace        = "cluster-services"
-  values           = [data.http.metrics_server_values.response_body]
+  set = [
+    {
+      name  = "replicas"
+      value = 2
+    },
+    {
+      name  = "apiService.create"
+      value = true
+    },
+  ]
 }
 
 # External DNS
