@@ -59,18 +59,13 @@ resource "helm_release" "cert_manager" {
   values           = [data.http.cert_manager.response_body]
 }
 
-# DO Marketplace Config
-data "http" "ingress_nginx" {
-  url = "https://raw.githubusercontent.com/digitalocean/marketplace-kubernetes/master/stacks/ingress-nginx/values.yml"
-}
-
 # To be removed once Cilium Ingress is supported
+# We can't use "controller.metrics.serviceMonitor.enabled" here as the ServiceMonitor is created as part of this TF module
 resource "helm_release" "ingress_nginx" {
   name             = "ingress-nginx"
   repository       = "https://kubernetes.github.io/ingress-nginx"
   chart            = "ingress-nginx"
   namespace        = "cluster-services"
-  values           = [data.http.ingress_nginx.response_body]
   set = [
     {
       name  = "controller.service.annotations.service\\.beta\\.kubernetes\\.io/do-loadbalancer-name"
@@ -79,7 +74,15 @@ resource "helm_release" "ingress_nginx" {
     {
       name  = "controller.service.annotations.service\\.beta\\.kubernetes\\.io/do-loadbalancer-type"
       value = "REGIONAL_NETWORK"
-    }
+    },
+    {
+      name  = "controller.replicaCount"
+      value = 2
+    },
+    {
+      name  = "controller.metrics.enabled"
+      value = true
+    },
   ]
 }
 

@@ -1,5 +1,39 @@
 data "digitalocean_database_metrics_credentials" "default" {}
 
+# nginx-ingress scrape
+# To be removed once Cilium Ingress is supported
+resource "kubernetes_manifest" "ingress_nginx_servicemonitor" {
+  manifest = {
+    apiVersion = "monitoring.coreos.com/v1"
+    kind       = "ServiceMonitor"
+    metadata = {
+      name      = "ingress-nginx-controller"
+      namespace = "cluster-services"
+      labels = {
+        release = "kube-prometheus-stack"
+      }
+    }
+    spec = {
+      selector = {
+        matchLabels = {
+          "app.kubernetes.io/component" = "controller"
+          "app.kubernetes.io/instance"  = "ingress-nginx"
+          "app.kubernetes.io/name"      = "ingress-nginx"
+        }
+      }
+      namespaceSelector = {
+        matchNames = ["cluster-services"]
+      }
+      endpoints = [
+        {
+          port     = "metrics"
+          interval = "30s"
+        }
+      ]
+    }
+  }
+}
+
 # AdService Postgres DB
 data "digitalocean_database_cluster" "adservice" {
   name                 = "${var.name_prefix}-adservice-pg"
