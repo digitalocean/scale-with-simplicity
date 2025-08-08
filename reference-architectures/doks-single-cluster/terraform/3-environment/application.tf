@@ -10,6 +10,18 @@ resource "helm_release" "microservices_demo" {
     {
       name : "frontend.fqdn"
       value : var.fqdn
-    }
+    },
+    {
+      name : "loadGenerator.checkFrontendInitContainer"
+      value : false
+    },
+    {
+      name : "loadGenerator.users"
+      value : 100
+    },
+    {
+      name : "loadGenerator.rate"
+      value : 5
+    },
   ]
 }

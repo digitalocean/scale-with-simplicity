@@ -87,6 +87,20 @@ resource "helm_release" "ingress_nginx" {
 }
 
 
+resource "kubernetes_config_map_v1" "ingress_nginx_dashboard" {
+  metadata {
+    name      = "ingress-nginx-grafana-dashboards"
+    namespace = "cluster-services"
+    labels = {
+      grafana_dashboard = "1"
+    }
+  }
+  data = {
+    "ingress-nginx-overview.json" = file("${path.module}/dashboards/ingress-nginx-overview.json")
+  }
+}
+
+
 # DO Marketplace Config to get base configs needed to work with DOKS
 data "http" "kube_prometheus_stack_values" {
   url = "https://raw.githubusercontent.com/digitalocean/marketplace-kubernetes/master/stacks/kube-prometheus-stack/values.yml"
@@ -120,6 +134,11 @@ resource "helm_release" "kube_prometheus_stack" {
     {
       name  = "kubeProxy.enabled"
       value = false
+    },
+    # Dashboards
+    {
+      name  = "grafana.dashboardsConfigMaps.ingress-nginx"
+      value = "ingress-nginx-grafana-dashboards"
     },
   ]
 }
