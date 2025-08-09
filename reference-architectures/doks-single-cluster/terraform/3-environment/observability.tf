@@ -130,6 +130,8 @@ resource "helm_release" "postgres_exporter" {
 
   # Pass the YAML produced from the map above
   values = [yamlencode({
+    fullnameOverride = "postgres-exporter-adservice"
+
     rbac = {
       create = true
     }
@@ -225,8 +227,10 @@ resource "kubernetes_secret_v1" "cart_database" {
     ca-cert = data.digitalocean_database_ca.cartservice.certificate
     # camelCase to match what is expected by helm chart
     connectionString = data.digitalocean_database_cluster.cartservice.private_uri
+    redis-password = data.digitalocean_database_cluster.cartservice.password
+    redis-username = data.digitalocean_database_cluster.cartservice.user
     metrics-password = data.digitalocean_database_metrics_credentials.default.password
-    metrcis-username = data.digitalocean_database_metrics_credentials.default.username
+    metrics-username = data.digitalocean_database_metrics_credentials.default.username
   }
   type = "Opaque"
 }
@@ -277,5 +281,65 @@ resource "kubernetes_manifest" "cartservice_database_scrape_config" {
     }
   }
 }
+
+resource "helm_release" "redis_exporter_cartservice" {
+  name       = "redis-exporter-cartservice"
+  repository = "https://prometheus-community.github.io/helm-charts"
+  chart      = "prometheus-redis-exporter"
+  namespace  = "default"
+
+  values = [
+    yamlencode({
+      fullnameOverride = "redis-exporter-cartservice"
+      redisAddress = "rediss://${data.digitalocean_database_cluster.cartservice.private_host}:${data.digitalocean_database_cluster.cartservice.port}"
+      env = [
+        {
+          name = "REDIS_USER"
+          valueFrom = {
+            secretKeyRef = {
+              name = "cartservice-database"
+              key  = "redis-username"
+            }
+          }
+        },
+        {
+          name = "REDIS_PASSWORD"
+          valueFrom = {
+            secretKeyRef = {
+              name = "cartservice-database"
+              key  = "redis-password"
+            }
+          }
+        }
+      ]
+
+      redisTlsConfig = {
+        enabled              = true
+        # Unable to get TLS Verification working, not sure if its the way the SSL certs are issue with just a wildcard SAN
+        skipTlsVerification  = true
+        caCertFile = {
+          secret = {
+            name = "cartservice-database"
+            key  = "ca-cert"
+          }
+        }
+      }
+
+      serviceMonitor = {
+        enabled       = true
+        namespace     = "default"
+        interval      = "30s"
+        scrapeTimeout = "10s"
+        labels        = { release = "kube-prometheus-stack" }
+      }
+
+      resources = {
+        requests = { cpu = "50m", memory = "64Mi" }
+        limits   = { cpu = "200m", memory = "256Mi" }
+      }
+    })
+  ]
+}
+
 
 
