@@ -44,7 +44,7 @@ resource "kubernetes_manifest" "ingress_nginx_servicemonitor" {
 # Retrieves the details of the managed PostgreSQL database cluster for the AdService.
 # This is needed to get connection details like the host, port, and credentials.
 data "digitalocean_database_cluster" "adservice" {
-  name                 = "${var.name_prefix}-adservice-pg"
+  name = "${var.name_prefix}-adservice-pg"
 }
 
 # Retrieves the CA certificate for the PostgreSQL database cluster.
@@ -62,9 +62,9 @@ resource "kubernetes_secret_v1" "adservice_database" {
     namespace = "default"
   }
   data = {
-    ca-cert = data.digitalocean_database_ca.adservice.certificate
-    metrics-password = data.digitalocean_database_metrics_credentials.default.password
-    metrics-username = data.digitalocean_database_metrics_credentials.default.username
+    ca-cert           = data.digitalocean_database_ca.adservice.certificate
+    metrics-password  = data.digitalocean_database_metrics_credentials.default.password
+    metrics-username  = data.digitalocean_database_metrics_credentials.default.username
     postgres-password = data.digitalocean_database_cluster.adservice.password
     postgres-username = data.digitalocean_database_cluster.adservice.user
   }
@@ -106,8 +106,8 @@ resource "kubernetes_manifest" "adservice_database_scrape_config" {
       }
     }
     spec = {
-      jobName         = "adservice-database"
-      scheme           = "HTTPS"
+      jobName = "adservice-database"
+      scheme  = "HTTPS"
       tlsConfig = {
         ca = {
           secret = {
@@ -116,12 +116,12 @@ resource "kubernetes_manifest" "adservice_database_scrape_config" {
           }
         }
       }
-      metricsPath     = "/metrics"
-      scrapeInterval  = "30s"
+      metricsPath    = "/metrics"
+      scrapeInterval = "30s"
       staticConfigs = [
         {
           targets = [
-            split("/",  data.digitalocean_database_cluster.adservice.metrics_endpoints[0])[2]
+            split("/", data.digitalocean_database_cluster.adservice.metrics_endpoints[0])[2]
           ]
         }
       ]
@@ -148,7 +148,7 @@ resource "helm_release" "postgres_exporter" {
   repository = "https://prometheus-community.github.io/helm-charts"
   chart      = "prometheus-postgres-exporter"
   # Installing in default as this is specific to the demo app, similar to the ScrapeConfigs
-  namespace  = "default"
+  namespace = "default"
 
   # Pass the YAML produced from the map above
   values = [yamlencode({
@@ -214,7 +214,7 @@ resource "helm_release" "postgres_exporter" {
       labels = {
         release = "kube-prometheus-stack"
       }
-      interval     = "30s"
+      interval      = "30s"
       scrapeTimeout = "10s"
     }
 
@@ -235,7 +235,7 @@ resource "helm_release" "postgres_exporter" {
 
 # Retrieves the details of the managed Valkey database cluster for the CartService.
 data "digitalocean_database_cluster" "cartservice" {
-  name                 = "${var.name_prefix}-cartservice-valkey"
+  name = "${var.name_prefix}-cartservice-valkey"
 }
 
 # Retrieves the CA certificate for the Valkey database cluster.
@@ -253,8 +253,8 @@ resource "kubernetes_secret_v1" "cart_database" {
     ca-cert = data.digitalocean_database_ca.cartservice.certificate
     # camelCase to match what is expected by helm chart
     connectionString = data.digitalocean_database_cluster.cartservice.private_uri
-    redis-password = data.digitalocean_database_cluster.cartservice.password
-    redis-username = data.digitalocean_database_cluster.cartservice.user
+    redis-password   = data.digitalocean_database_cluster.cartservice.password
+    redis-username   = data.digitalocean_database_cluster.cartservice.user
     metrics-password = data.digitalocean_database_metrics_credentials.default.password
     metrics-username = data.digitalocean_database_metrics_credentials.default.username
   }
@@ -276,8 +276,8 @@ resource "kubernetes_manifest" "cartservice_database_scrape_config" {
       }
     }
     spec = {
-      jobName         = "cartservice-database"
-      scheme           = "HTTPS"
+      jobName = "cartservice-database"
+      scheme  = "HTTPS"
       tlsConfig = {
         ca = {
           secret = {
@@ -286,12 +286,12 @@ resource "kubernetes_manifest" "cartservice_database_scrape_config" {
           }
         }
       }
-      metricsPath     = "/metrics"
-      scrapeInterval  = "30s"
+      metricsPath    = "/metrics"
+      scrapeInterval = "30s"
       staticConfigs = [
         {
           targets = [
-            split("/",  data.digitalocean_database_cluster.cartservice.metrics_endpoints[0])[2]
+            split("/", data.digitalocean_database_cluster.cartservice.metrics_endpoints[0])[2]
           ]
         }
       ]
@@ -321,7 +321,7 @@ resource "helm_release" "redis_exporter_cartservice" {
   values = [
     yamlencode({
       fullnameOverride = "redis-exporter-cartservice"
-      redisAddress = "rediss://${data.digitalocean_database_cluster.cartservice.private_host}:${data.digitalocean_database_cluster.cartservice.port}"
+      redisAddress     = "rediss://${data.digitalocean_database_cluster.cartservice.private_host}:${data.digitalocean_database_cluster.cartservice.port}"
       env = [
         {
           name = "REDIS_USER"
@@ -344,9 +344,9 @@ resource "helm_release" "redis_exporter_cartservice" {
       ]
 
       redisTlsConfig = {
-        enabled              = true
+        enabled = true
         # Unable to get TLS Verification working, not sure if its the way the SSL certs are issue with just a wildcard SAN
-        skipTlsVerification  = true
+        skipTlsVerification = true
         caCertFile = {
           secret = {
             name = "cartservice-database"

@@ -58,14 +58,14 @@ resource "kubernetes_secret_v1" "digitalocean_access_token" {
 # from various issuing sources, like Let's Encrypt. It ensures that certificates are valid and
 # up to date, and attempts to renew certificates at a configured time before expiry.
 resource "helm_release" "cert_manager" {
-  name             = "cert-manager"
-  repository       = "https://charts.jetstack.io"
-  chart            = "cert-manager"
+  name       = "cert-manager"
+  repository = "https://charts.jetstack.io"
+  chart      = "cert-manager"
   # using older version to work around https://github.com/cert-manager/cert-manager/issues/6805
   # Tried using the feature gate ACMEHTTP01IngressPathTypeExact, but was unable to get it to work
   # Will revisit when we replace nginx-ingress with cilium-ingress in Q4.
-  version = "1.17.2"
-  namespace        = "cluster-services"
+  version   = "1.17.2"
+  namespace = "cluster-services"
   set = [
     {
       name  = "installCRDs"
@@ -80,10 +80,10 @@ resource "helm_release" "cert_manager" {
 # services within the cluster based on rules defined in Ingress resources.
 # To be replaced with Cilium Ingress in Q4.
 resource "helm_release" "ingress_nginx" {
-  name             = "ingress-nginx"
-  repository       = "https://kubernetes.github.io/ingress-nginx"
-  chart            = "ingress-nginx"
-  namespace        = "cluster-services"
+  name       = "ingress-nginx"
+  repository = "https://kubernetes.github.io/ingress-nginx"
+  chart      = "ingress-nginx"
+  namespace  = "cluster-services"
   set = [
     # We can't use "controller.metrics.serviceMonitor.enabled" here as the ServiceMonitor is created as part of this TF module
     # Sets the name of the loadbalancer to the name_prefix
@@ -120,10 +120,10 @@ resource "kubernetes_config_map_v1" "grafana_dashboards" {
     }
   }
   data = {
-    "ingress-nginx-overview.json"              = file("${path.module}/dashboards/ingress-nginx-overview.json")
-    "postgres-exporter.json" = file("${path.module}/dashboards/postgres-exporter.json")
-    "redis-exporter.json" = file("${path.module}/dashboards/redis-exporter.json")
-    "telegraf-system-metrics.json"  = file("${path.module}/dashboards/telegraf-system-metrics.json")
+    "ingress-nginx-overview.json"  = file("${path.module}/dashboards/ingress-nginx-overview.json")
+    "postgres-exporter.json"       = file("${path.module}/dashboards/postgres-exporter.json")
+    "redis-exporter.json"          = file("${path.module}/dashboards/redis-exporter.json")
+    "telegraf-system-metrics.json" = file("${path.module}/dashboards/telegraf-system-metrics.json")
   }
 }
 
@@ -186,10 +186,10 @@ resource "helm_release" "kube_prometheus_stack" {
 # It's a crucial component for features like the Horizontal Pod Autoscaler (HPA),
 # which automatically scales the number of pods in a deployment based on CPU or memory usage.
 resource "helm_release" "metrics_server" {
-  name             = "metrics-server"
-  repository       = "https://kubernetes-sigs.github.io/metrics-server"
-  chart            = "metrics-server"
-  namespace        = "cluster-services"
+  name       = "metrics-server"
+  repository = "https://kubernetes-sigs.github.io/metrics-server"
+  chart      = "metrics-server"
+  namespace  = "cluster-services"
   set = [
     {
       name  = "replicas"
@@ -208,10 +208,10 @@ resource "helm_release" "metrics_server" {
 # corresponding DNS records, making them accessible via a public domain name.
 # It uses the DigitalOcean API token stored in the previously created secret.
 resource "helm_release" "external_dns" {
-  name             = "external-dns"
-  repository       = "https://kubernetes-sigs.github.io/external-dns"
-  chart            = "external-dns"
-  namespace        = "cluster-services"
+  name       = "external-dns"
+  repository = "https://kubernetes-sigs.github.io/external-dns"
+  chart      = "external-dns"
+  namespace  = "cluster-services"
   values = [yamlencode({
     provider = {
       name = "digitalocean"
