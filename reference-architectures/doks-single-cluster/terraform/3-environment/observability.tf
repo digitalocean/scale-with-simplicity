@@ -43,16 +43,18 @@ data "digitalocean_database_ca" "adservice" {
   cluster_id = data.digitalocean_database_cluster.adservice.id
 }
 
+# used by the demo app
 resource "kubernetes_secret_v1" "adservice_database" {
   metadata {
     name      = "adservice-database"
     namespace = "default"
   }
   data = {
-    caCert = data.digitalocean_database_ca.adservice.certificate
-    password = data.digitalocean_database_metrics_credentials.default.password
+    ca-cert = data.digitalocean_database_ca.adservice.certificate
+    metrics-password = data.digitalocean_database_metrics_credentials.default.password
+    metrics-username = data.digitalocean_database_metrics_credentials.default.username
     postgres-password = data.digitalocean_database_cluster.adservice.password
-    username = data.digitalocean_database_metrics_credentials.default.username
+    postgres-username = data.digitalocean_database_cluster.adservice.user
   }
   type = "Opaque"
 }
@@ -91,7 +93,7 @@ resource "kubernetes_manifest" "adservice_database_scrape_config" {
         ca = {
           secret = {
             name = "adservice-database"
-            key  = "caCert"
+            key  = "ca-cert"
           }
         }
       }
@@ -108,18 +110,102 @@ resource "kubernetes_manifest" "adservice_database_scrape_config" {
       basicAuth = {
         username = {
           name = "adservice-database"
-          key  = "username"
+          key  = "metrics-username"
         }
         password = {
           name = "adservice-database"
-          key  = "password"
+          key  = "metrics-password"
         }
       }
     }
   }
 }
 
+resource "helm_release" "postgres_exporter" {
+  name       = "postgres-exporter-adservice"
+  repository = "https://prometheus-community.github.io/helm-charts"
+  chart      = "prometheus-postgres-exporter"
+  # Installing in default as this is specific to the demo app, similar to the ScrapeConfigs
+  namespace  = "default"
 
+  # Pass the YAML produced from the map above
+  values = [yamlencode({
+    rbac = {
+      create = true
+    }
+    serviceAccount = {
+      create = true
+    }
+
+    config = {
+      extraArgs = [
+        # Enabled to get uptime stats
+        "--collector.postmaster",
+        # Disable as doadmin doesn't have superuser perms needed to get wal metrics.
+        "--no-collector.wal"
+      ]
+      datasource = {
+        host     = data.digitalocean_database_cluster.adservice.private_host
+        port     = tostring(data.digitalocean_database_cluster.adservice.port)
+        database = data.digitalocean_database_cluster.adservice.database
+        sslmode  = "require"
+        userSecret = {
+          name = kubernetes_secret_v1.adservice_database.metadata[0].name
+          key  = "postgres-username"
+        }
+        passwordSecret = {
+          name = kubernetes_secret_v1.adservice_database.metadata[0].name
+          key  = "postgres-password"
+        }
+        extraParams = "sslrootcert=/etc/postgres-ca/ca.crt"
+      }
+    }
+
+
+    extraVolumes = [
+      {
+        name = "do-pg-ca"
+        secret = {
+          secretName = "adservice-database"
+          items = [
+            {
+              key  = "ca-cert"
+              path = "ca.crt"
+            }
+          ]
+        }
+      }
+    ]
+
+    extraVolumeMounts = [
+      {
+        name      = "do-pg-ca"
+        mountPath = "/etc/postgres-ca"
+        readOnly  = true
+      }
+    ]
+
+    serviceMonitor = {
+      enabled = true
+      labels = {
+        release = "kube-prometheus-stack"
+      }
+      interval     = "30s"
+      scrapeTimeout = "10s"
+    }
+
+    resources = {
+      requests = {
+        cpu    = "50m"
+        memory = "64Mi"
+      }
+      limits = {
+        cpu    = "200m"
+        memory = "256Mi"
+      }
+    }
+  })]
+}
 
 # CartService ValKey DB
 data "digitalocean_database_cluster" "cartservice" {
@@ -136,10 +222,11 @@ resource "kubernetes_secret_v1" "cart_database" {
     namespace = "default"
   }
   data = {
-    caCert = data.digitalocean_database_ca.cartservice.certificate
+    ca-cert = data.digitalocean_database_ca.cartservice.certificate
+    # camelCase to match what is expected by helm chart
     connectionString = data.digitalocean_database_cluster.cartservice.private_uri
-    password = data.digitalocean_database_metrics_credentials.default.password
-    username = data.digitalocean_database_metrics_credentials.default.username
+    metrics-password = data.digitalocean_database_metrics_credentials.default.password
+    metrcis-username = data.digitalocean_database_metrics_credentials.default.username
   }
   type = "Opaque"
 }
@@ -163,7 +250,7 @@ resource "kubernetes_manifest" "cartservice_database_scrape_config" {
         ca = {
           secret = {
             name = "cartservice-database"
-            key  = "caCert"
+            key  = "ca-cert"
           }
         }
       }
@@ -180,11 +267,11 @@ resource "kubernetes_manifest" "cartservice_database_scrape_config" {
       basicAuth = {
         username = {
           name = "cartservice-database"
-          key  = "username"
+          key  = "metrics-username"
         }
         password = {
           name = "cartservice-database"
-          key  = "password"
+          key  = "metrics-password"
         }
       }
     }

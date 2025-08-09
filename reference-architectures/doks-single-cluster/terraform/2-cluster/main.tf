@@ -98,6 +98,7 @@ resource "kubernetes_config_map_v1" "grafana_dashboards" {
   }
   data = {
     "ingress-nginx-overview.json"              = file("${path.module}/dashboards/ingress-nginx-overview.json")
+    "postgres-exporter.json" = file("${path.module}/dashboards/postgres-exporter.json")
     "telegraf-system-metrics.json"  = file("${path.module}/dashboards/telegraf-system-metrics.json")
   }
 }
