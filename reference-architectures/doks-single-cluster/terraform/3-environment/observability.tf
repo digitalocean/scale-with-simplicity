@@ -1,7 +1,12 @@
+# This data source retrieves the default metrics credentials for DigitalOcean managed databases.
+# These credentials are used to access the metrics endpoints of the databases.
 data "digitalocean_database_metrics_credentials" "default" {}
 
-# nginx-ingress scrape
-# To be removed once Cilium Ingress is supported
+# This resource creates a ServiceMonitor for the NGINX Ingress Controller.
+# A ServiceMonitor is a custom resource defined by the Prometheus Operator, which declaratively specifies
+# how groups of services should be monitored. This ensures that Prometheus will scrape metrics
+# from the ingress controller, providing visibility into ingress traffic and performance.
+# This will be removed once Cilium Ingress is supported and provides its own ServiceMonitor.
 resource "kubernetes_manifest" "ingress_nginx_servicemonitor" {
   manifest = {
     apiVersion = "monitoring.coreos.com/v1"
@@ -34,16 +39,23 @@ resource "kubernetes_manifest" "ingress_nginx_servicemonitor" {
   }
 }
 
-# AdService Postgres DB
+### AdService (PostgreSQL) Observability ###
+
+# Retrieves the details of the managed PostgreSQL database cluster for the AdService.
+# This is needed to get connection details like the host, port, and credentials.
 data "digitalocean_database_cluster" "adservice" {
   name                 = "${var.name_prefix}-adservice-pg"
 }
 
+# Retrieves the CA certificate for the PostgreSQL database cluster.
+# This is required for clients to establish a secure, encrypted connection to the database.
 data "digitalocean_database_ca" "adservice" {
   cluster_id = data.digitalocean_database_cluster.adservice.id
 }
 
-# used by the demo app
+# Creates a Kubernetes secret to store all necessary credentials and certificates for the AdService database.
+# This includes the database password, metrics credentials, and the CA certificate.
+# The demo application and the Prometheus exporter will mount this secret to connect to the database.
 resource "kubernetes_secret_v1" "adservice_database" {
   metadata {
     name      = "adservice-database"
@@ -59,6 +71,9 @@ resource "kubernetes_secret_v1" "adservice_database" {
   type = "Opaque"
 }
 
+# Creates a Kubernetes ConfigMap to store non-sensitive configuration details for the AdService database.
+# This includes the database host, name, port, and SSL mode.
+# The application can mount this ConfigMap to get its database connection configuration.
 resource "kubernetes_config_map_v1" "adservice_database_configuration" {
   metadata {
     name      = "adservice-database-configuration"
@@ -74,6 +89,10 @@ resource "kubernetes_config_map_v1" "adservice_database_configuration" {
   }
 }
 
+# Creates a ScrapeConfig for the AdService's PostgreSQL database.
+# ScrapeConfig is a custom resource that allows for more detailed and advanced scrape configurations
+# than a ServiceMonitor. Here, it's used to configure Prometheus to scrape the database's metrics endpoint 
+# of the managed PostgreSQL database setup in the first stack.
 resource "kubernetes_manifest" "adservice_database_scrape_config" {
   manifest = {
     apiVersion = "monitoring.coreos.com/v1alpha1"
@@ -121,6 +140,9 @@ resource "kubernetes_manifest" "adservice_database_scrape_config" {
   }
 }
 
+# Deploys the Prometheus PostgreSQL Exporter using its Helm chart.
+# This exporter connects to the PostgreSQL database, runs queries to collect metrics,
+# and exposes them in a format that Prometheus can understand and scrape.
 resource "helm_release" "postgres_exporter" {
   name       = "postgres-exporter-adservice"
   repository = "https://prometheus-community.github.io/helm-charts"
@@ -209,15 +231,19 @@ resource "helm_release" "postgres_exporter" {
   })]
 }
 
-# CartService ValKey DB
+### CartService (Valkey) Observability ###
+
+# Retrieves the details of the managed Valkey database cluster for the CartService.
 data "digitalocean_database_cluster" "cartservice" {
   name                 = "${var.name_prefix}-cartservice-valkey"
 }
 
+# Retrieves the CA certificate for the Valkey database cluster.
 data "digitalocean_database_ca" "cartservice" {
   cluster_id = data.digitalocean_database_cluster.cartservice.id
 }
 
+# Creates a Kubernetes secret to store credentials and connection info for the CartService's Valkey database.
 resource "kubernetes_secret_v1" "cart_database" {
   metadata {
     name      = "cartservice-database"
@@ -235,6 +261,8 @@ resource "kubernetes_secret_v1" "cart_database" {
   type = "Opaque"
 }
 
+# Creates a ScrapeConfig for the CartService's Valkey database, similar to the one for PostgreSQL.
+# This configures Prometheus to scrape metrics from the Valkey database's metrics endpoint.
 resource "kubernetes_manifest" "cartservice_database_scrape_config" {
   manifest = {
     apiVersion = "monitoring.coreos.com/v1alpha1"
@@ -282,6 +310,8 @@ resource "kubernetes_manifest" "cartservice_database_scrape_config" {
   }
 }
 
+# Deploys the Prometheus Redis Exporter using its Helm chart.
+# This exporter connects to the Valkey (Redis-compatible) database and exposes its metrics for Prometheus.
 resource "helm_release" "redis_exporter_cartservice" {
   name       = "redis-exporter-cartservice"
   repository = "https://prometheus-community.github.io/helm-charts"
