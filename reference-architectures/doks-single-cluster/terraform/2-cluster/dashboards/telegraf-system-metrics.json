@@ -1,0 +1,225 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "datasource", "uid": "grafana" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "target": { "limit": 100, "matchAny": false, "tags": [], "type": "dashboard" },
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 79,
+      "panels": [],
+      "title": "CPU",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#299c46", "value": 0 },
+              { "color": "rgba(237, 129, 40, 0.89)", "value": 80 },
+              { "color": "#d44a3a", "value": 90 }
+            ]
+          },
+          "unit": "percent"
+        }
+      },
+      "gridPos": { "h": 6, "w": 4, "x": 0, "y": 1 },
+      "id": 26,
+      "options": {
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "showThresholdLabels": true,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "expr": "sum(100 - cpu_usage_idle{host=\"$instance\", cpu=\"cpu-total\"})",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "CPU Used",
+      "type": "gauge"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 6, "w": 20, "x": 4, "y": 1 },
+      "id": 14,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        { "expr": "cpu_usage_user{host=\"$instance\", cpu=\"cpu-total\"}", "legendFormat": "User", "refId": "B" },
+        { "expr": "cpu_usage_system{host=\"$instance\", cpu=\"cpu-total\"}", "legendFormat": "System", "refId": "A" },
+        { "expr": "cpu_usage_idle{host=\"$instance\", cpu=\"cpu-total\"}", "legendFormat": "Idle", "refId": "C" }
+      ],
+      "title": "CPU Total %",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 7 },
+      "id": 85,
+      "panels": [],
+      "title": "Memory",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#299c46", "value": 0 },
+              { "color": "rgba(237, 129, 40, 0.89)", "value": 80 },
+              { "color": "#d44a3a", "value": 90 }
+            ]
+          },
+          "unit": "percent"
+        }
+      },
+      "gridPos": { "h": 6, "w": 4, "x": 0, "y": 8 },
+      "id": 25,
+      "targets": [
+        { "expr": "mem_used_percent{host=\"$instance\"}", "instant": true, "refId": "A" }
+      ],
+      "title": "Memory Used",
+      "type": "gauge"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "bytes" } },
+      "gridPos": { "h": 6, "w": 20, "x": 4, "y": 8 },
+      "id": 108,
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "showLegend": true },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        { "expr": "mem_used{host=\"$instance\"}", "legendFormat": "mem_used", "refId": "A" },
+        { "expr": "mem_buffered{host=\"$instance\"}", "legendFormat": "mem_buffered", "refId": "B" },
+        { "expr": "mem_cached{host=\"$instance\"}", "legendFormat": "mem_cached", "refId": "C" },
+        { "expr": "swap_used{host=\"$instance\"}", "legendFormat": "mem_swap", "refId": "D" },
+        { "expr": "mem_free{host=\"$instance\"}", "legendFormat": "mem_free", "refId": "E" }
+      ],
+      "title": "Memory Utilization",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
+      "id": 102,
+      "panels": [],
+      "title": "Block Devices",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 15 },
+      "id": 106,
+      "targets": [
+        { "expr": "disk_used_percent{host=\"$instance\"}", "legendFormat": "{{path}}", "refId": "A" }
+      ],
+      "title": "Disk Usage",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 22 },
+      "id": 104,
+      "targets": [
+        { "expr": "rate(diskio_read_bytes{host=\"$instance\",name!~\"dm-[0-9]\"}[5m])", "legendFormat": "{{name}}", "refId": "A" }
+      ],
+      "title": "Disk IO Reads",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 22 },
+      "id": 109,
+      "targets": [
+        { "expr": "rate(diskio_write_bytes{host=\"$instance\",name!~\"dm-[0-9]\"}[5m])", "legendFormat": "{{name}}", "refId": "A" }
+      ],
+      "title": "Disk IO Write",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 29 },
+      "id": 113,
+      "targets": [
+        { "expr": "rate(diskio_io_time{host=\"$instance\"}[1m]) / 10", "legendFormat": "{{name}}", "refId": "A" }
+      ],
+      "title": "Disk IO Util",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 37 },
+      "id": 200,
+      "panels": [],
+      "title": "Network",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 38 },
+      "id": 111,
+      "targets": [
+        { "expr": "rate(net_bytes_recv{host=\"$instance\",interface!~\"lo\"}[1m])", "legendFormat": "received by the {{interface}}", "refId": "A" },
+        { "expr": "rate(net_bytes_sent{host=\"$instance\",interface!~\"lo\"}[1m])", "legendFormat": "sent by the {{interface}}", "refId": "B" }
+      ],
+      "title": "Network Utilization",
+      "type": "timeseries"
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": { "text": "", "value": "" },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "definition": "label_values(system_uptime, host)",
+        "includeAll": false,
+        "name": "instance",
+        "query": { "query": "label_values(system_uptime, host)", "refId": "StandardVariableQuery" },
+        "refresh": 1,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "Telegraf System Metrics",
+  "version": 2
+}

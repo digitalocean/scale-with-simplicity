@@ -87,31 +87,34 @@ resource "helm_release" "ingress_nginx" {
 }
 
 
-resource "kubernetes_config_map_v1" "ingress_nginx_dashboard" {
+# One ConfigMap for all Grafana dashboards
+resource "kubernetes_config_map_v1" "grafana_dashboards" {
   metadata {
-    name      = "ingress-nginx-grafana-dashboards"
+    name      = "grafana-dashboards"
     namespace = "cluster-services"
     labels = {
       grafana_dashboard = "1"
     }
   }
   data = {
-    "ingress-nginx-overview.json" = file("${path.module}/dashboards/ingress-nginx-overview.json")
+    "ingress-nginx-overview.json"              = file("${path.module}/dashboards/ingress-nginx-overview.json")
+    "telegraf-system-metrics.json"  = file("${path.module}/dashboards/telegraf-system-metrics.json")
   }
 }
 
-
-# DO Marketplace Config to get base configs needed to work with DOKS
+# DO Marketplace base values
 data "http" "kube_prometheus_stack_values" {
   url = "https://raw.githubusercontent.com/digitalocean/marketplace-kubernetes/master/stacks/kube-prometheus-stack/values.yml"
 }
 
 resource "helm_release" "kube_prometheus_stack" {
-  name             = "kube-prometheus-stack"
-  repository       = "https://prometheus-community.github.io/helm-charts"
-  chart            = "kube-prometheus-stack"
-  namespace        = "cluster-services"
-  values           = [data.http.kube_prometheus_stack_values.response_body]
+  name       = "kube-prometheus-stack"
+  repository = "https://prometheus-community.github.io/helm-charts"
+  chart      = "kube-prometheus-stack"
+  namespace  = "cluster-services"
+
+  values = [data.http.kube_prometheus_stack_values.response_body]
+
   set = [
     {
       name  = "prometheus.prometheusSpec.serviceDiscoveryRole"
@@ -135,10 +138,11 @@ resource "helm_release" "kube_prometheus_stack" {
       name  = "kubeProxy.enabled"
       value = false
     },
-    # Dashboards
+
+    # Point Grafana at our single ConfigMap (folder name "custom")
     {
-      name  = "grafana.dashboardsConfigMaps.ingress-nginx"
-      value = "ingress-nginx-grafana-dashboards"
+      name  = "grafana.dashboardsConfigMaps.custom"
+      value = kubernetes_config_map_v1.grafana_dashboards.metadata[0].name
     },
   ]
 }
