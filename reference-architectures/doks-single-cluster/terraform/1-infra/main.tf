@@ -6,15 +6,21 @@ locals {
 }
 
 
+# Creates a Virtual Private Cloud (VPC) to provide a logically isolated network for the resources.
+# All resources within this VPC can communicate with each other over a private network.
 resource "digitalocean_vpc" "doks" {
   name     = var.name_prefix
   region   = var.region
   ip_range = var.vpc_cidr
 }
 
+
+# This data source retrieves a list of all available Kubernetes versions on DigitalOcean, so we can use the latest version for our cluster.
 data "digitalocean_kubernetes_versions" "all" {}
 
-# Retrieves the least expensive 2vCPU 4GB RAM Droplet
+# This data source finds the most cost-effective Droplet (Virtual Machine) size that meets specific criteria.
+# Here, it's looking for a Droplet with 2 vCPUs and 4GB of memory in the specified region.
+# The result is sorted by price to ensure the cheapest option is selected. This slug is then used in the Kubernetes node pool.
 data "digitalocean_sizes" "slug_2vcpu_4gb" {
   filter {
     key    = "vcpus"
@@ -37,6 +43,7 @@ data "digitalocean_sizes" "slug_2vcpu_4gb" {
   }
 }
 
+# This is the main resource that creates the DigitalOcean Kubernetes (DOKS) cluster.
 resource "digitalocean_kubernetes_cluster" "primary_cluster" {
   name                             = var.name_prefix
   region                           = var.region
@@ -60,8 +67,8 @@ resource "digitalocean_kubernetes_cluster" "primary_cluster" {
   }
 }
 
-### Databases
-# AdService Postgres DB
+### Managed Databases
+# Creates a managed PostgreSQL database cluster for the 'AdService'.
 resource "digitalocean_database_cluster" "adservice" {
   name                 = "${var.name_prefix}-adservice-pg"
   engine               = "pg"
@@ -73,7 +80,9 @@ resource "digitalocean_database_cluster" "adservice" {
   tags                 = local.tags
 }
 
-# CartService ValKey DB
+# Creates a managed Valkey database cluster for the 'CartService'.
+# Valkey is an open-source, in-memory data structure store, often used as a database, cache, and message broker.
+# It is a fork of Redis and is suitable for high-performance use cases like caching session data.
 resource "digitalocean_database_cluster" "cart_service" {
   name                 = "${var.name_prefix}-cartservice-valkey"
   engine               = "valkey"
