@@ -61,47 +61,14 @@ resource "helm_release" "cert_manager" {
   name       = "cert-manager"
   repository = "https://charts.jetstack.io"
   chart      = "cert-manager"
-  # using older version to work around https://github.com/cert-manager/cert-manager/issues/6805
-  # Tried using the feature gate ACMEHTTP01IngressPathTypeExact, but was unable to get it to work
-  # Will revisit when we replace nginx-ingress with cilium-ingress in Q4.
-  version   = "1.17.2"
   namespace = "cluster-services"
   set = [
     {
-      name  = "installCRDs"
+      name  = "crds.enabled"
       value = true
     },
-  ]
-}
-
-# This resource deploys the NGINX Ingress Controller using its Helm chart.
-# An Ingress Controller is responsible for fulfilling the Ingress resources created in the cluster.
-# It acts as a reverse proxy and load balancer, routing external HTTP/S traffic to the correct
-# services within the cluster based on rules defined in Ingress resources.
-# To be replaced with Cilium Ingress in Q4.
-resource "helm_release" "ingress_nginx" {
-  name       = "ingress-nginx"
-  repository = "https://kubernetes.github.io/ingress-nginx"
-  chart      = "ingress-nginx"
-  namespace  = "cluster-services"
-  set = [
-    # We can't use "controller.metrics.serviceMonitor.enabled" here as the ServiceMonitor is created as part of this TF module
-    # Sets the name of the loadbalancer to the name_prefix
     {
-      name  = "controller.service.annotations.service\\.beta\\.kubernetes\\.io/do-loadbalancer-name"
-      value = var.name_prefix
-    },
-    # Ensure the load balancer is a regional network load balancer
-    {
-      name  = "controller.service.annotations.service\\.beta\\.kubernetes\\.io/do-loadbalancer-type"
-      value = "REGIONAL_NETWORK"
-    },
-    {
-      name  = "controller.replicaCount"
-      value = 2
-    },
-    {
-      name  = "controller.metrics.enabled"
+      name  = "config.enableGatewayAPI"
       value = true
     },
   ]
@@ -120,7 +87,6 @@ resource "kubernetes_config_map_v1" "grafana_dashboards" {
     }
   }
   data = {
-    "ingress-nginx-overview.json"  = file("${path.module}/dashboards/ingress-nginx-overview.json")
     "postgres-exporter.json"       = file("${path.module}/dashboards/postgres-exporter.json")
     "redis-exporter.json"          = file("${path.module}/dashboards/redis-exporter.json")
     "telegraf-system-metrics.json" = file("${path.module}/dashboards/telegraf-system-metrics.json")
@@ -225,9 +191,54 @@ resource "helm_release" "external_dns" {
             key  = "token"
           }
         }
-      }
+      },
     ]
     # Policy of sync means that external-dns will remove records it created when the corresponding service is also removed.
     policy = "sync"
+    sources = [
+      "service",
+      "ingress",
+      # Only including GA Route Resources.
+      "gateway-grpcroute",
+      "gateway-httproute",
+    ]
   })]
+}
+
+
+resource "kubernetes_manifest" "cilium_gateway_http" {
+  manifest = {
+    apiVersion = "gateway.networking.k8s.io/v1"
+    kind       = "Gateway"
+    metadata = {
+      name      = "http"
+      namespace = "cluster-services"
+    }
+    spec = {
+      gatewayClassName = "cilium"
+      # This is used to set the annotations on the service which is then pickup by the DOKS CCM.
+      infrastructure = {
+        annotations = {
+          "service.beta.kubernetes.io/do-loadbalancer-name" = var.name_prefix
+        }
+      }
+      listeners = [
+        {
+          name     = "http"
+          protocol = "HTTP"
+          port     = 80
+          allowedRoutes = {
+            namespaces = {
+              from     = "Selector"
+              selector = {
+                matchLabels = {
+                  gateway = "true"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
 }
