@@ -59,7 +59,7 @@ data "digitalocean_database_ca" "adservice" {
 resource "kubernetes_secret_v1" "adservice_database" {
   metadata {
     name      = "adservice-database"
-    namespace = "default"
+    namespace = kubernetes_namespace_v1.demo.metadata[0].name
   }
   data = {
     ca-cert           = data.digitalocean_database_ca.adservice.certificate
@@ -77,7 +77,7 @@ resource "kubernetes_secret_v1" "adservice_database" {
 resource "kubernetes_config_map_v1" "adservice_database_configuration" {
   metadata {
     name      = "adservice-database-configuration"
-    namespace = "default"
+    namespace = kubernetes_namespace_v1.demo.metadata[0].name
   }
   data = {
     postgres-password = data.digitalocean_database_cluster.adservice.password
@@ -99,7 +99,7 @@ resource "kubernetes_manifest" "adservice_database_scrape_config" {
     kind       = "ScrapeConfig"
     metadata = {
       name      = "adservice-database"
-      namespace = "default"
+      namespace = kubernetes_namespace_v1.demo.metadata[0].name
       labels = {
         # Label used to discover ScrapeConfigs matching the name of helm_release
         release = "kube-prometheus-stack"
@@ -148,7 +148,7 @@ resource "helm_release" "postgres_exporter" {
   repository = "https://prometheus-community.github.io/helm-charts"
   chart      = "prometheus-postgres-exporter"
   # Installing in default as this is specific to the demo app, similar to the ScrapeConfigs
-  namespace = "default"
+  namespace = kubernetes_namespace_v1.demo.metadata[0].name
 
   # Pass the YAML produced from the map above
   values = [yamlencode({
@@ -247,7 +247,7 @@ data "digitalocean_database_ca" "cartservice" {
 resource "kubernetes_secret_v1" "cart_database" {
   metadata {
     name      = "cartservice-database"
-    namespace = "default"
+    namespace = kubernetes_namespace_v1.demo.metadata[0].name
   }
   data = {
     ca-cert = data.digitalocean_database_ca.cartservice.certificate
@@ -269,7 +269,7 @@ resource "kubernetes_manifest" "cartservice_database_scrape_config" {
     kind       = "ScrapeConfig"
     metadata = {
       name      = "cartservice-database"
-      namespace = "default"
+      namespace = kubernetes_namespace_v1.demo.metadata[0].name
       labels = {
         # Label used to discover ScrapeConfigs matching the name of helm_release
         release = "kube-prometheus-stack"

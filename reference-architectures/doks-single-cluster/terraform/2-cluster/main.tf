@@ -63,14 +63,10 @@ resource "helm_release" "cert_manager" {
   chart      = "cert-manager"
   namespace = "cluster-services"
   set = [
-    {
-      name  = "crds.enabled"
-      value = true
-    },
-    {
-      name  = "config.enableGatewayAPI"
-      value = true
-    },
+    { name = "crds.enabled", value = true },
+    { name = "config.apiVersion", value = "controller.config.cert-manager.io/v1alpha1" },
+    { name = "config.kind", value = "ControllerConfiguration" },
+    { name = "config.enableGatewayAPI", value = true },
   ]
 }
 
@@ -203,42 +199,4 @@ resource "helm_release" "external_dns" {
       "gateway-httproute",
     ]
   })]
-}
-
-
-resource "kubernetes_manifest" "cilium_gateway_http" {
-  manifest = {
-    apiVersion = "gateway.networking.k8s.io/v1"
-    kind       = "Gateway"
-    metadata = {
-      name      = "http"
-      namespace = "cluster-services"
-    }
-    spec = {
-      gatewayClassName = "cilium"
-      # This is used to set the annotations on the service which is then pickup by the DOKS CCM.
-      infrastructure = {
-        annotations = {
-          "service.beta.kubernetes.io/do-loadbalancer-name" = var.name_prefix
-        }
-      }
-      listeners = [
-        {
-          name     = "http"
-          protocol = "HTTP"
-          port     = 80
-          allowedRoutes = {
-            namespaces = {
-              from     = "Selector"
-              selector = {
-                matchLabels = {
-                  gateway = "true"
-                }
-              }
-            }
-          }
-        }
-      ]
-    }
-  }
 }
