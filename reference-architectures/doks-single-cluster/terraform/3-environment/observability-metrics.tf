@@ -316,7 +316,7 @@ resource "helm_release" "redis_exporter_cartservice" {
   name       = "redis-exporter-cartservice"
   repository = "https://prometheus-community.github.io/helm-charts"
   chart      = "prometheus-redis-exporter"
-  namespace  = "default"
+  namespace  = kubernetes_namespace_v1.demo.metadata[0].name
 
   values = [
     yamlencode({

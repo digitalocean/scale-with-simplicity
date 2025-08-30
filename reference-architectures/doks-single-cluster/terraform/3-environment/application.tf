@@ -1,13 +1,3 @@
-resource "kubernetes_namespace_v1" "demo" {
-  metadata {
-    annotations = {
-      name = "demo"
-    }
-    name = "demo"
-  }
-}
-
-
 resource "kubernetes_manifest" "cilium_gateway_http" {
   manifest = {
     apiVersion = "gateway.networking.k8s.io/v1"
@@ -23,7 +13,7 @@ resource "kubernetes_manifest" "cilium_gateway_http" {
       gatewayClassName = "cilium"
       # This is used to set the annotations on the service which is then pickup by the DOKS CCM.
       infrastructure = {
-        annotations = {
+      annotations = {
           "service.beta.kubernetes.io/do-loadbalancer-name" = var.name_prefix
         }
       }
@@ -107,8 +97,14 @@ resource "kubernetes_manifest" "httproute_frontend" {
     spec = {
       parentRefs = [
         {
-          name      = kubernetes_manifest.cilium_gateway_http.manifest.metadata.name
-          namespace = kubernetes_namespace_v1.demo.metadata[0].name
+          name        = kubernetes_manifest.cilium_gateway_http.manifest.metadata.name
+          namespace   = kubernetes_namespace_v1.demo.metadata[0].name
+          sectionName = "http"
+        },
+        {
+          name        = kubernetes_manifest.cilium_gateway_http.manifest.metadata.name
+          namespace   = kubernetes_namespace_v1.demo.metadata[0].name
+          sectionName = "https"
         }
       ]
       hostnames = [var.fqdn]

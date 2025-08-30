@@ -26,3 +26,7 @@ terraform.tfvars
 
 #Misc
 *.out
+
+# Claude Code
+.claude/
+CLAUDE.local.md
