@@ -1,5 +1,48 @@
+# cert-manager Issuer for Automatic TLS Certificate Management
+#
+# This Issuer resource configures cert-manager to automatically obtain and renew
+# TLS certificates from Let's Encrypt using the ACME HTTP-01 challenge method.
+# cert-manager was installed as part of the cluster services in stack 2-cluster.
+#
+# The HTTP-01 challenge works by having Let's Encrypt request a specific file
+# from your domain over HTTP. cert-manager automatically creates temporary
+# HTTPRoutes to handle these challenges through the Gateway.
+resource "kubernetes_manifest" "letsencrypt_dns01_issuer" {
+  manifest = {
+    apiVersion = "cert-manager.io/v1"
+    kind       = "ClusterIssuer"
+    metadata = {
+      name      = "demo-letsencrypt-dns01"
+    }
+    spec = {
+      acme = {
+        server = "https://acme-v02.api.letsencrypt.org/directory"
+        # Secret where the ACME account private key will be stored
+        privateKeySecretRef = {
+          name = "letsencrypt-account-key"
+        }
+        # Challenge solvers define how cert-manager will prove domain ownership
+        solvers = [
+          {
+            # HTTP-01 challenge solver configuration
+            dns01 = {
+              digitalocean: {
+                tokenSecretRef: {
+                  name: "digitalocean-access-token"
+                  key: "token"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
+
+
 # Gateway API Resource - Modern Kubernetes Ingress Alternative
-# 
+#
 # The Gateway API is the next-generation ingress solution for Kubernetes that provides
 # more expressive, extensible, and role-oriented APIs for managing ingress traffic.
 # It's designed to be more powerful and flexible than traditional Ingress resources.
@@ -25,14 +68,14 @@ resource "kubernetes_manifest" "cilium_gateway_http" {
       annotations = {
         # This annotation tells cert-manager which Issuer to use for automatic
         # TLS certificate provisioning. The issuer is defined below in this file.
-        "cert-manager.io/issuer": "demo-letsencrypt-http01"
+        "cert-manager.io/cluster-issuer": "demo-letsencrypt-dns01"
       }
     }
     spec = {
       # Specifies which Gateway Class to use. In DOKS with Cilium, we use "cilium"
       # which was installed by default when the cluster was created.
       gatewayClassName = "cilium"
-      
+
       # Infrastructure configuration allows us to customize the underlying Service
       # that the Gateway creates. These annotations are applied to the Service
       # and picked up by the DigitalOcean Cloud Controller Manager (CCM).
@@ -43,29 +86,15 @@ resource "kubernetes_manifest" "cilium_gateway_http" {
           "service.beta.kubernetes.io/do-loadbalancer-name" = var.name_prefix
         }
       }
-      
+
       # Listeners define the network endpoints that this Gateway exposes.
       # Each listener can handle different protocols, ports, and hostnames.
       listeners = [
-        {
-          # HTTP listener for port 80 - typically used for HTTP-01 ACME challenges
-          # and redirecting traffic to HTTPS
-          name     = "http"
-          protocol = "HTTP"
-          port     = 80
-          allowedRoutes = {
-            namespaces = {
-              # Only allow HTTPRoutes from the same namespace to bind to this listener
-              from = "Same"
-            }
-          }
-        },
         {
           # HTTPS listener for port 443 - handles secure traffic
           name     = "https"
           protocol = "HTTPS"
           port     = 443
-          # Hostname restriction - only accept traffic for this specific FQDN
           hostname = var.fqdn
           tls = {
             # Reference to the TLS certificate Secret that cert-manager will create
@@ -76,75 +105,18 @@ resource "kubernetes_manifest" "cilium_gateway_http" {
               }
             ]
           }
-          allowedRoutes = {
-            namespaces = {
-              # Only allow HTTPRoutes from the same namespace to bind to this listener
-              from = "Same"
-            }
-          }
+        },
+        {
+          # HTTP listener for port 80 used redirecting traffic to HTTPS
+          name     = "http"
+          protocol = "HTTP"
+          port     = 80
+          hostname = var.fqdn
         }
       ]
     }
   }
 }
-
-# cert-manager Issuer for Automatic TLS Certificate Management
-#
-# This Issuer resource configures cert-manager to automatically obtain and renew
-# TLS certificates from Let's Encrypt using the ACME HTTP-01 challenge method.
-# cert-manager was installed as part of the cluster services in stack 2-cluster.
-#
-# The HTTP-01 challenge works by having Let's Encrypt request a specific file
-# from your domain over HTTP. cert-manager automatically creates temporary
-# HTTPRoutes to handle these challenges through the Gateway.
-resource "kubernetes_manifest" "letsencrypt_http01_issuer" {
-  manifest = {
-    apiVersion = "cert-manager.io/v1"
-    kind       = "Issuer"
-    metadata = {
-      name      = "demo-letsencrypt-http01"
-      namespace = kubernetes_namespace_v1.demo.metadata[0].name
-    }
-    spec = {
-      acme = {
-        # Contact email for Let's Encrypt notifications (certificate expiration, etc.)
-        # In production, replace with a real email address
-        email  = "null@digitalocean.com"
-        
-        # Let's Encrypt ACME server endpoint for production certificates
-        # For testing, you can use: https://acme-staging-v02.api.letsencrypt.org/directory
-        server = "https://acme-v02.api.letsencrypt.org/directory"
-        
-        # Secret where the ACME account private key will be stored
-        privateKeySecretRef = { name = "letsencrypt-account-key" }
-        
-        # Challenge solvers define how cert-manager will prove domain ownership
-        solvers = [
-          {
-            # HTTP-01 challenge solver configuration
-            http01 = {
-              # Gateway API specific configuration for HTTP-01 challenges
-              # This tells cert-manager to use the Gateway for ACME challenges
-              # instead of creating traditional Ingress resources
-              gatewayHTTPRoute = {
-                parentRefs = [
-                  {
-                    # Reference to the Gateway defined above that will handle
-                    # the ACME challenge requests on port 80
-                    name      = "demo-http"
-                    namespace = kubernetes_namespace_v1.demo.metadata[0].name
-                    kind      = "Gateway"
-                  }
-                ]
-              }
-            }
-          }
-        ]
-      }
-    }
-  }
-}
-
 
 # HTTPRoute Resource - Application Traffic Routing Configuration
 #
@@ -158,38 +130,30 @@ resource "kubernetes_manifest" "letsencrypt_http01_issuer" {
 # approach means the HTTPRoute binds to a Gateway defined in the same namespace and
 # managed by the same team, providing full control over the ingress configuration
 # without dependencies on shared infrastructure resources.
-resource "kubernetes_manifest" "httproute_frontend" {
+resource "kubernetes_manifest" "httproute_frontend_https" {
   manifest = {
     apiVersion = "gateway.networking.k8s.io/v1"
     kind       = "HTTPRoute"
     metadata = {
-      name      = "demo-frontend"
+      name      = "demo-frontend-https"
       namespace = kubernetes_namespace_v1.demo.metadata[0].name
     }
     spec = {
       # parentRefs define which Gateway listeners this HTTPRoute binds to
-      # This HTTPRoute will handle traffic from both HTTP (port 80) and HTTPS (port 443)
       parentRefs = [
         {
           # Reference to the Gateway defined above
-          name        = kubernetes_manifest.cilium_gateway_http.manifest.metadata.name
-          namespace   = kubernetes_namespace_v1.demo.metadata[0].name
-          # Bind to the HTTP listener (port 80) - used for ACME challenges and redirects
-          sectionName = "http"
-        },
-        {
-          # Reference to the Gateway defined above  
           name        = kubernetes_manifest.cilium_gateway_http.manifest.metadata.name
           namespace   = kubernetes_namespace_v1.demo.metadata[0].name
           # Bind to the HTTPS listener (port 443) - used for secure application traffic
           sectionName = "https"
         }
       ]
-      
+
       # Only accept traffic for this specific hostname
       # This works with the hostname restriction on the HTTPS listener
       hostnames = [var.fqdn]
-      
+
       # Routing rules define how to match incoming requests and where to send them
       rules = [
         {
@@ -204,7 +168,7 @@ resource "kubernetes_manifest" "httproute_frontend" {
               }
             }
           ]
-          
+
           # Backend references - where should matching traffic be sent?
           backendRefs = [
             {
@@ -220,6 +184,61 @@ resource "kubernetes_manifest" "httproute_frontend" {
   }
 }
 
+
+resource "kubernetes_manifest" "httproute_frontend_http_redirect" {
+  manifest = {
+    apiVersion = "gateway.networking.k8s.io/v1"
+    kind       = "HTTPRoute"
+    metadata = {
+      name      = "demo-frontend-http-redirect"
+      namespace = kubernetes_namespace_v1.demo.metadata[0].name
+    }
+    spec = {
+      # parentRefs define which Gateway listeners this HTTPRoute binds to
+      parentRefs = [
+        {
+          # Reference to the Gateway defined above
+          name        = kubernetes_manifest.cilium_gateway_http.manifest.metadata.name
+          namespace   = kubernetes_namespace_v1.demo.metadata[0].name
+          # Bind to the HTTPS listener (port 443) - used for secure application traffic
+          sectionName = "http"
+        }
+      ]
+
+      # Only accept traffic for this specific hostname
+      # This works with the hostname restriction on the HTTPS listener
+      hostnames = [var.fqdn]
+
+      # Routing rules define how to match incoming requests and where to send them
+      rules = [
+        {
+          # Match conditions - when should this rule apply?
+          matches = [
+            {
+              path = {
+                # PathPrefix matching means any path starting with "/" (i.e., all paths)
+                # Other options include "Exact" and "RegularExpression"
+                type  = "PathPrefix"
+                value = "/"
+              }
+            }
+          ]
+
+          filters = [
+            {
+              type = "RequestRedirect"
+              requestRedirect = {
+                scheme = "https"
+                port = "443"
+                statusCode = "301"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
 
 
 # Microservices Demo Application Deployment
@@ -245,7 +264,7 @@ resource "helm_release" "microservices_demo" {
       name : "devDeployment"
       value : "false"
     },
-    
+
     # Sets the fully qualified domain name (FQDN) for the frontend service.
     # external-dns (installed in stack 2-cluster) will automatically create a DNS record
     # for this FQDN pointing to the DigitalOcean Load Balancer created by the Gateway.
@@ -253,7 +272,7 @@ resource "helm_release" "microservices_demo" {
       name : "frontend.fqdn"
       value : var.fqdn
     },
-    
+
     # Disables the creation of cert-manager Issuer resource in the Helm chart
     # because we're managing the Issuer externally (defined above in this file).
     # This prevents conflicts and gives us more control over certificate management.
@@ -261,7 +280,7 @@ resource "helm_release" "microservices_demo" {
       name : "frontend.createIssuer"
       value : "false"
     },
-    
+
     # Disables the creation of traditional Ingress resource in the Helm chart
     # because we're using the modern Gateway API with HTTPRoute instead.
     # The HTTPRoute defined above replaces the traditional Ingress functionality.
@@ -269,7 +288,7 @@ resource "helm_release" "microservices_demo" {
       name : "frontend.createIngress"
       value : "false"
     },
-    
+
     # Disables an init container that checks for frontend availability at startup.
     # This is necessary because it takes time for the load balancer to be provisioned
     # and for external-dns to create the DNS record. Without this, the deployment
@@ -278,7 +297,7 @@ resource "helm_release" "microservices_demo" {
       name : "loadGenerator.checkFrontendInitContainer"
       value : false
     },
-    
+
     # Configures the load generator to simulate 100 concurrent users.
     # This creates realistic load patterns for testing and demonstrating
     # the application's performance under load.
@@ -286,7 +305,7 @@ resource "helm_release" "microservices_demo" {
       name : "loadGenerator.users"
       value : 100
     },
-    
+
     # Sets the rate at which the load generator sends requests (requests per second).
     # This creates a steady load pattern that helps validate the monitoring
     # and observability stack deployed in stack 2-cluster.
