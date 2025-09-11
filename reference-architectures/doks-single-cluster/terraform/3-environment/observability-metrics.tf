@@ -2,17 +2,18 @@
 # These credentials are used to access the metrics endpoints of the databases.
 data "digitalocean_database_metrics_credentials" "default" {}
 
-# This resource creates a ServiceMonitor for the NGINX Ingress Controller.
-# A ServiceMonitor is a custom resource defined by the Prometheus Operator, which declaratively specifies
-# how groups of services should be monitored. This ensures that Prometheus will scrape metrics
-# from the ingress controller, providing visibility into ingress traffic and performance.
-# This will be removed once Cilium Ingress is supported and provides its own ServiceMonitor.
-resource "kubernetes_manifest" "ingress_nginx_servicemonitor" {
+# PodMonitor for Cilium Metrics (Agent and Envoy)
+# This monitors both Cilium agent and Envoy proxy metrics directly from the Cilium pods.
+# Since Cilium runs as a DaemonSet, the pods are stable and scraping directly is efficient.
+# - Port 9090 (prometheus): Cilium agent metrics for CNI health, BPF operations, and policy enforcement
+# - Port 9964 (envoy-metrics): Envoy proxy metrics for L7 visibility including HTTP request rates,
+#   latencies, and status codes for Gateway traffic
+resource "kubernetes_manifest" "cilium_podmonitor" {
   manifest = {
     apiVersion = "monitoring.coreos.com/v1"
-    kind       = "ServiceMonitor"
+    kind       = "PodMonitor"
     metadata = {
-      name      = "ingress-nginx-controller"
+      name      = "cilium"
       namespace = "cluster-services"
       labels = {
         release = "kube-prometheus-stack"
@@ -21,18 +22,22 @@ resource "kubernetes_manifest" "ingress_nginx_servicemonitor" {
     spec = {
       selector = {
         matchLabels = {
-          "app.kubernetes.io/component" = "controller"
-          "app.kubernetes.io/instance"  = "ingress-nginx"
-          "app.kubernetes.io/name"      = "ingress-nginx"
+          "k8s-app" = "cilium"
         }
       }
       namespaceSelector = {
-        matchNames = ["cluster-services"]
+        matchNames = ["kube-system"]
       }
-      endpoints = [
+      podMetricsEndpoints = [
         {
-          port     = "metrics"
+          port     = "prometheus"
           interval = "30s"
+          path     = "/metrics"
+        },
+        {
+          port     = "envoy-metrics"
+          interval = "30s"
+          path     = "/metrics"
         }
       ]
     }
