@@ -30,13 +30,13 @@ variable "doks_control_plane_ha" {
 }
 
 variable "doks_node_pool_min_nodes" {
-  description = "Minimum number of nodes in the DOKS node pool"
+  description = "Minimum number of nodes in the DOKS node pool. Min is 3 to ensure quorum based services (like Loki) can survive the lost of a node."
   type        = number
-  default     = 2
+  default     = 3
 }
 
 variable "doks_node_pool_max_nodes" {
   description = "Maximum number of nodes in the DOKS node pool can autoscale to"
   type        = number
-  default     = 4
+  default     = 5
 }
