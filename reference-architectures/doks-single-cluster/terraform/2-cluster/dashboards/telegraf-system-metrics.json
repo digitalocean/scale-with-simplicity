@@ -220,6 +220,6 @@
     ]
   },
   "time": { "from": "now-1h", "to": "now" },
-  "title": "Telegraf System Metrics",
+  "title": "DBaaS / System Metrics",
   "version": 2
 }

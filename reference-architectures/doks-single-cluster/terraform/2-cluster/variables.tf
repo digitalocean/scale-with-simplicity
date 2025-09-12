@@ -3,6 +3,11 @@ variable "name_prefix" {
   type        = string
 }
 
+variable "grafana_password" {
+  description = "Password used for Grafana UI"
+  default = "do-demo"
+}
+
 variable "digitalocean_access_token" {
   description = "A DigitalOcean API Access Token used by some of the installed controllers, such as external-dns, to interact with DO APU"
 }

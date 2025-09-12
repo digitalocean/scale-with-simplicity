@@ -1352,10 +1352,6 @@
   "preload": false,
   "refresh": "30s",
   "schemaVersion": 41,
-  "tags": [
-    "prometheus",
-    "redis"
-  ],
   "templating": {
     "list": [
       {
@@ -1429,6 +1425,6 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Redis Exporter",
+  "title": "DBaaS / Redis Exporter",
   "version": 1
 }

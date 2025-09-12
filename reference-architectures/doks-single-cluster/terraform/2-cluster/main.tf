@@ -73,9 +73,9 @@ resource "helm_release" "cert_manager" {
 
 # This resource creates a Kubernetes ConfigMap to hold custom Grafana dashboard definitions.
 # Grafana can be configured to automatically discover and load dashboards from ConfigMaps.
-resource "kubernetes_config_map_v1" "grafana_dashboards" {
+resource "kubernetes_config_map_v1" "grafana_dashboard_postgres_exporter" {
   metadata {
-    name      = "grafana-dashboards"
+    name      = "grafana-dashboard-postgres-exporter"
     namespace = "cluster-services"
     labels = {
       # The label `grafana_dashboard = "1"` is used by the Grafana sidecar to discover this ConfigMap.
@@ -84,10 +84,78 @@ resource "kubernetes_config_map_v1" "grafana_dashboards" {
   }
   data = {
     "postgres-exporter.json"       = file("${path.module}/dashboards/postgres-exporter.json")
+  }
+}
+
+resource "kubernetes_config_map_v1" "grafana_dashboards_redis_exporter" {
+  metadata {
+    name      = "grafana-dashboards-redis-exporter"
+    namespace = "cluster-services"
+    labels = {
+      # The label `grafana_dashboard = "1"` is used by the Grafana sidecar to discover this ConfigMap.
+      grafana_dashboard = "1"
+    }
+  }
+  data = {
     "redis-exporter.json"          = file("${path.module}/dashboards/redis-exporter.json")
+  }
+}
+
+resource "kubernetes_config_map_v1" "grafana_dashboards_telegraf_system_metrics" {
+  metadata {
+    name      = "grafana-dashboards-telegraf-system-metrics"
+    namespace = "cluster-services"
+    labels = {
+      # The label `grafana_dashboard = "1"` is used by the Grafana sidecar to discover this ConfigMap.
+      grafana_dashboard = "1"
+    }
+  }
+  data = {
     "telegraf-system-metrics.json" = file("${path.module}/dashboards/telegraf-system-metrics.json")
   }
 }
+
+resource "kubernetes_config_map_v1" "grafana_dashboards_cilium_agent" {
+  metadata {
+    name      = "grafana-dashboards-cilium-agent"
+    namespace = "cluster-services"
+    labels = {
+      # The label `grafana_dashboard = "1"` is used by the Grafana sidecar to discover this ConfigMap.
+      grafana_dashboard = "1"
+    }
+  }
+  data = {
+    "cilium-agent.json" = file("${path.module}/dashboards/cilium-agent.json")
+  }
+}
+
+resource "kubernetes_config_map_v1" "grafana_dashboards_envoy_web" {
+  metadata {
+    name      = "grafana-dashboards-envoy-web"
+    namespace = "cluster-services"
+    labels = {
+      # The label `grafana_dashboard = "1"` is used by the Grafana sidecar to discover this ConfigMap.
+      grafana_dashboard = "1"
+    }
+  }
+  data = {
+    "envoy-web.json" = file("${path.module}/dashboards/envoy-web.json")
+  }
+}
+
+
+resource "kubernetes_secret_v1" "grafana_admin" {
+  metadata {
+    name      = "grafana-admin"
+    namespace = "cluster-services"
+  }
+  data = {
+    admin-user = "admin"
+    admin-password = var.grafana_password
+  }
+  type = "Opaque"
+}
+
 
 # This data source fetches the default values file for the kube-prometheus-stack Helm chart.
 # This allows us to use the official recommended base configuration from DigitalOcean's marketplace
@@ -109,6 +177,22 @@ resource "helm_release" "kube_prometheus_stack" {
   values = [data.http.kube_prometheus_stack_values.response_body]
 
   set = [
+    # Size of volume
+    {
+      name = "prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.resources.requests.storage"
+      value = "5Gi"
+    },
+    # Specify retention to ensure volume does not fill up
+    {
+      name = "prometheus.prometheusSpec.retention"
+      value = "7d"
+    },
+    {
+      name = "prometheus.prometheusSpec.retentionSize"
+      value = "4GiB"
+    },
+
+    # Needed in later K8s clusters where Endpoints have been replaced by EndpointSlice
     {
       name  = "prometheus.prometheusSpec.serviceDiscoveryRole"
       value = "EndpointSlice"
@@ -131,14 +215,15 @@ resource "helm_release" "kube_prometheus_stack" {
       name  = "kubeProxy.enabled"
       value = false
     },
+    # Ensure AlertManager redundancy. 3 replicas suggested to ensure no duplicates or missed alerts.
+    # Only using 2 here for demo purposes and small cluster (only 2 nodes normally)
     {
-      name  = "grafana.adminPassword"
-      value = "demo"
+      name  = "alertmanager.alertmanagerSpec.replicas"
+      value = 2
     },
-    # Point Grafana at our single ConfigMap (folder name "custom")
     {
-      name  = "grafana.dashboardsConfigMaps.custom"
-      value = kubernetes_config_map_v1.grafana_dashboards.metadata[0].name
+      name  = "grafana.admin.existingSecret"
+      value = "grafana-admin"
     },
   ]
 }
