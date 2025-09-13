@@ -76,7 +76,7 @@ resource "helm_release" "loki" {
           configs = [
             {
               # Data is just used to determine when the schema was first used.
-              from         = "2025-09-12"
+              from         = "2025-06-01"
               store        = "tsdb"
               object_store = "s3"
               schema       = "v13"
@@ -117,8 +117,20 @@ resource "helm_release" "alloy" {
       controller = { type = "daemonset" }
 
       alloy = {
-        # Mount host logs for file tailing
+        # Tail files from the host
         mounts = { varlog = true }
+
+        # We need the node name to keep only pods scheduled on *this* node.
+        extraEnv = [
+          {
+            name = "HOST_NODE_NAME"
+            valueFrom = {
+              fieldRef = {
+                fieldPath = "spec.nodeName"
+              }
+            }
+          }
+        ]
 
         configMap = {
           content = <<-EOT
@@ -126,36 +138,83 @@ resource "helm_release" "alloy" {
 
             // --- LOKI SINK ---
             loki.write "default" {
-              endpoint { url = "http://loki-gateway.cluster-services:3100/loki/api/v1/push" }
+              endpoint { url = "http://loki-gateway.cluster-services/loki/api/v1/push" }
             }
 
-            // --- FILE-BASED POD LOGS ---
-            // Discover all container log files on the node via globbing.
-            // On containerd-based clusters, /var/log/containers/*.log symlinks to /var/log/pods/...
-            local.file_match "pod_logs" {
-              path_targets = [
-                { __path__ = "/var/log/containers/*.log" },
-              ]
+            // --- DISCOVER PODS (metadata only) ---
+            discovery.kubernetes "pods" {
+              role = "pod"
             }
 
-            // Tail the files and ship to Loki
-            loki.source.file "pod_logs" {
-              targets    = local.file_match.pod_logs.targets
+            // --- RELABEL: keep only pods on this node, compute file path, and expose labels ---
+            discovery.relabel "pod_targets" {
+              targets = discovery.kubernetes.pods.targets
+
+              // Keep only pods scheduled on this node
+              rule {
+                source_labels = ["__meta_kubernetes_pod_node_name"]
+                regex         = env("HOST_NODE_NAME")
+                action        = "keep"
+              }
+
+              // Set the logfile path for container logs on this node
+              // /var/log/containers/<pod>_<namespace>_<container>-<id>.log
+              rule {
+                source_labels = [
+                  "__meta_kubernetes_pod_name",
+                  "__meta_kubernetes_namespace",
+                  "__meta_kubernetes_pod_container_name",
+                  "__meta_kubernetes_pod_container_id",
+                ]
+                separator     = "_"
+                regex         = "(.+)_(.+)_(.+)_(?:containerd://|docker://)?([a-f0-9]+).*"
+                target_label  = "__path__"
+                replacement   = "/var/log/containers/$${1}_$${2}_$${3}-$${4}.log"
+                action        = "replace"
+              }
+
+              // Promote common k8s identity labels
+              rule {
+                source_labels = ["__meta_kubernetes_namespace"]
+                target_label  = "namespace"
+              }
+              rule {
+                source_labels = ["__meta_kubernetes_pod_name"]
+                target_label  = "pod"
+              }
+              rule {
+                source_labels = ["__meta_kubernetes_pod_container_name"]
+                target_label  = "container"
+              }
+              rule {
+                source_labels = ["__meta_kubernetes_pod_node_name"]
+                target_label  = "node"
+              }
+
+              // Map all pod labels into Loki labels (e.g., app_kubernetes_io_name, app, etc.)
+              rule {
+                action = "labelmap"
+                regex  = "__meta_kubernetes_pod_label_(.+)"
+              }
+            }
+
+            // --- FILE-TAILER with enriched targets ---
+            loki.source.file "pods" {
+              targets    = discovery.relabel.pod_targets.output
               forward_to = [loki.process.pods.receiver]
             }
 
-            // Add any static labels you want (cluster/env, etc.)
+            // Parse CRI format (timestamps/stream), then forward
             loki.process "pods" {
-              // stage.static_labels { values = { cluster = "doks" } }
+              stage.cri {}
               forward_to = [loki.write.default.receiver]
             }
 
-            // --- KUBERNETES EVENTS (API) ---
+            // --- KUBERNETES EVENTS (lightweight via API) ---
             loki.source.kubernetes_events "events" {
               forward_to = [loki.process.events.receiver]
             }
             loki.process "events" {
-              // stage.static_labels { values = { cluster = "doks" } }
               forward_to = [loki.write.default.receiver]
             }
           EOT
@@ -164,4 +223,6 @@ resource "helm_release" "alloy" {
     })
   ]
 }
+
+
 
