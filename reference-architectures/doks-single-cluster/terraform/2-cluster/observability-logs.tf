@@ -217,11 +217,48 @@ resource "helm_release" "alloy" {
             loki.process "events" {
               forward_to = [loki.write.default.receiver]
             }
+            // --- SYSLOG LISTENER for Log Sink ---
+            loki.source.syslog "logsink" {
+              listener {
+                address = "0.0.0.0:6514"
+                protocol = "tcp"
+              }
+              forward_to = [loki.write.default.receiver]
+            }
           EOT
         }
       }
     })
   ]
+}
+
+# LoadBalancer Service for Log Sink - exposes Alloy's syslog listener to external rsyslog sources
+resource "kubernetes_service_v1" "alloy_syslog_nlb" {
+  metadata {
+    name      = "alloy-syslog-nlb"
+    namespace = kubernetes_namespace_v1.cluster_services.metadata[0].name
+    annotations = {
+      "external-dns.alpha.kubernetes.io/hostname" = var.log_sink_fqdn
+      "service.beta.kubernetes.io/do-loadbalancer-name" = "${var.name_prefix}-syslog-nlb"
+      "service.beta.kubernetes.io/do-loadbalancer-network" = "INTERNAL"
+    }
+  }
+
+  spec {
+    type = "LoadBalancer"
+
+    port {
+      name        = "syslog-tcp"
+      protocol    = "TCP"
+      port        = 6514
+      target_port = 6514
+    }
+
+    selector = {
+      "app.kubernetes.io/name" = "alloy"
+      "app.kubernetes.io/instance" = "alloy"
+    }
+  }
 }
 
 
