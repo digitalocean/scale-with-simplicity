@@ -230,6 +230,7 @@ resource "helm_release" "alloy" {
       }
     })
   ]
+  depends_on = [kubernetes_manifest.syslog_server_certificate]
 }
 
 # LoadBalancer Service for Log Sink - exposes Alloy's syslog listener to external rsyslog sources
@@ -257,6 +258,89 @@ resource "kubernetes_service_v1" "alloy_syslog_nlb" {
     selector = {
       "app.kubernetes.io/name" = "alloy"
       "app.kubernetes.io/instance" = "alloy"
+    }
+  }
+}
+
+# Self-signed ClusterIssuer for creating a root CA
+resource "kubernetes_manifest" "syslog_ca_issuer" {
+  manifest = {
+    apiVersion = "cert-manager.io/v1"
+    kind       = "ClusterIssuer"
+    metadata = {
+      name = "syslog-ca-issuer"
+    }
+    spec = {
+      selfSigned = {}
+    }
+  }
+}
+
+# Root CA Certificate
+resource "kubernetes_manifest" "syslog_ca_certificate" {
+  manifest = {
+    apiVersion = "cert-manager.io/v1"
+    kind       = "Certificate"
+    metadata = {
+      name      = "syslog-ca"
+      namespace = kubernetes_namespace_v1.cluster_services.metadata[0].name
+    }
+    spec = {
+      isCA       = true
+      commonName = "Syslog Log Sink CA"
+      secretName = "syslog-ca-secret"
+      privateKey = {
+        algorithm = "ECDSA"
+        size      = 256
+      }
+      issuerRef = {
+        name  = kubernetes_manifest.syslog_ca_issuer.manifest.metadata.name
+        kind  = "ClusterIssuer"
+        group = "cert-manager.io"
+      }
+    }
+  }
+}
+
+# CA ClusterIssuer using the generated CA
+resource "kubernetes_manifest" "syslog_ca_cluster_issuer" {
+  manifest = {
+    apiVersion = "cert-manager.io/v1"
+    kind       = "ClusterIssuer"
+    metadata = {
+      name = "syslog-ca-cluster-issuer"
+    }
+    spec = {
+      ca = {
+        secretName = kubernetes_manifest.syslog_ca_certificate.manifest.spec.secretName
+      }
+    }
+  }
+}
+
+# Server Certificate for Alloy syslog listener
+resource "kubernetes_manifest" "syslog_server_certificate" {
+  manifest = {
+    apiVersion = "cert-manager.io/v1"
+    kind       = "Certificate"
+    metadata = {
+      name      = "syslog-server-cert"
+      namespace = kubernetes_namespace_v1.cluster_services.metadata[0].name
+    }
+    spec = {
+      secretName = "alloy-syslog-tls"
+      issuerRef = {
+        name  = kubernetes_manifest.syslog_ca_cluster_issuer.manifest.metadata.name
+        kind  = "ClusterIssuer"
+        group = "cert-manager.io"
+      }
+      dnsNames = [
+        var.log_sink_fqdn
+      ]
+      privateKey = {
+        algorithm = "ECDSA"
+        size      = 256
+      }
     }
   }
 }
