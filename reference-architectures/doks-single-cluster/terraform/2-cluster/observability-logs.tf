@@ -1,4 +1,4 @@
-resource "digitalocean_spaces_bucket" "loki_logs" {
+data "digitalocean_spaces_bucket" "loki_logs" {
   name   = "${var.name_prefix}-loki-logs"
   region = data.digitalocean_kubernetes_cluster.doks_cluster.region
 }
@@ -6,7 +6,7 @@ resource "digitalocean_spaces_bucket" "loki_logs" {
 resource "digitalocean_spaces_key" "loki_logs" {
   name = "loki-logs"
   grant {
-    bucket     = digitalocean_spaces_bucket.loki_logs.name
+    bucket     = data.digitalocean_spaces_bucket.loki_logs.name
     permission = "readwrite"
   }
 }
@@ -60,11 +60,11 @@ resource "helm_release" "loki" {
 
         storage = {
           bucketNames = {
-            chunks = digitalocean_spaces_bucket.loki_logs.name
-            ruler  = digitalocean_spaces_bucket.loki_logs.name
+            chunks = data.digitalocean_spaces_bucket.loki_logs.name
+            ruler  = data.digitalocean_spaces_bucket.loki_logs.name
           }
           s3 = {
-            endpoint           = "https://${digitalocean_spaces_bucket.loki_logs.region}.digitaloceanspaces.com"
+            endpoint           = "https://${data.digitalocean_spaces_bucket.loki_logs.region}.digitaloceanspaces.com"
             region             = "us-east-1"
             s3ForcePathStyle   = true
             signatureVersion   = "v4"

@@ -95,3 +95,9 @@ resource "digitalocean_database_cluster" "cart_service" {
   tags                 = local.tags
 }
 
+# Bucket used store logs used by Loki
+resource "digitalocean_spaces_bucket" "loki_logs" {
+  name   = "${var.name_prefix}-loki-logs"
+  region = var.region
+}
+
