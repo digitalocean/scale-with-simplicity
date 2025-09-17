@@ -111,14 +111,37 @@ resource "helm_release" "alloy" {
   repository = "https://grafana.github.io/helm-charts"
   chart      = "alloy"
   namespace  = kubernetes_namespace_v1.cluster_services.metadata[0].name
+  recreate_pods = true
 
   values = [
     yamlencode({
-      controller = { type = "daemonset" }
+      controller = {
+        type = "daemonset"
+        volumes = {
+          extra = [
+            {
+              name = "alloy-syslog-tls"
+              secret = {
+                secretName = "alloy-syslog-tls"
+              }
+            }
+          ]
+        }
+      }
 
       alloy = {
         # Tail files from the host
-        mounts = { varlog = true }
+        mounts = {
+          varlog = true
+          # Mount the TLS certificate for syslog listener
+          extra = [
+            {
+              name      = "alloy-syslog-tls"
+              mountPath = "/etc/alloy/certs"
+              readOnly  = true
+            }
+          ]
+        }
 
         # We need the node name to keep only pods scheduled on *this* node.
         extraEnv = [
@@ -217,11 +240,15 @@ resource "helm_release" "alloy" {
             loki.process "events" {
               forward_to = [loki.write.default.receiver]
             }
-            // --- SYSLOG LISTENER for Log Sink ---
+            // --- SYSLOG LISTENER for Log Sink with TLS ---
             loki.source.syslog "logsink" {
               listener {
                 address = "0.0.0.0:6514"
                 protocol = "tcp"
+                tls_config {
+                  cert_file = "/etc/alloy/certs/tls.crt"
+                  key_file  = "/etc/alloy/certs/tls.key"
+                }
               }
               forward_to = [loki.write.default.receiver]
             }
