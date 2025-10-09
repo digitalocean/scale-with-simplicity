@@ -1,0 +1,14 @@
+#cloud-config
+# TODO: Cloud-init configuration to route Droplet egress through NAT Gateway
+# while preserving access to DigitalOcean metadata endpoint
+#
+# This is a stub for now. I want to test if this init file was executed
+# and then flesh it out on a live droplet.
+#
+#The configuration should,
+#1. Preserves metadata endpoint access via original gateway
+#2. Route all other traffic through NAT Gateway
+#3. Make routing persistent across reboots
+
+runcmd:
+  - echo "Hello, World!" > /tmp/hello_world.txt

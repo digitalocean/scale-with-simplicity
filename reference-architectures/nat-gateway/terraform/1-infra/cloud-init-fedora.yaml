@@ -1,7 +1,0 @@
-#cloud-config
-# TODO: Cloud-init configuration to route Droplet egress through NAT Gateway
-# while preserving access to DigitalOcean metadata endpoint
-# This is a stub for now. I want to check if this init file was executed.
-runcmd:
-  - echo "Hello, World!" > /tmp/hello_world.txt
-
