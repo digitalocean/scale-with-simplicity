@@ -1,6 +1,5 @@
 terraform {
   required_version = "~> 1.0"
-
   required_providers {
     digitalocean = {
       source = "digitalocean/digitalocean"
@@ -8,7 +7,6 @@ terraform {
       }
     }
 }
-
 provider "digitalocean"{
   token = var.do_token
 }
@@ -31,13 +29,21 @@ resource "digitalocean_vpc_nat_gateway" "this" {
   }
 }
 
+locals {
+  nat_gateway_ip = tolist(digitalocean_vpc_nat_gateway.this.vpcs)[0].gateway_ip
+  cloud_config = templatefile("${path.module}/cloud-config.yaml", {
+    original_gateway        = "192.168.44.1"
+    nat_gateway_gateway_ip = local.nat_gateway_ip
+  })
+}
+
 # Resource 3: Droplet(non K8 host)
 resource "digitalocean_droplet" "non-k8-host-droplet" {
   image = var.droplet_image 
   size = var.droplet_size 
   name = "non-k8-host-droplet"
   vpc_uuid = digitalocean_vpc.ra-nat-gateway-vpc.id
-  user_data = file("${path.module}/cloud-config.yaml")
+  user_data = local.cloud_config
   depends_on = [digitalocean_vpc_nat_gateway.this]
 }
 
@@ -46,11 +52,9 @@ resource "digitalocean_kubernetes_cluster" "k8-cluster" {
   name = "k8-cluster"
   region = var.region
   version = "latest"
-
   routing_agent {
     enabled = true
   }
-
   node_pool {
     name = "worker-pool"
     size = "s-2vcpu-2gb"

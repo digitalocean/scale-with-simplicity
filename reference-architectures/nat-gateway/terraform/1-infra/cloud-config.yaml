@@ -1,14 +1,26 @@
 #cloud-config
-# TODO: Cloud-init configuration to route Droplet egress through NAT Gateway
-# while preserving access to DigitalOcean metadata endpoint
-#
-# This is a stub for now. I want to test if this init file was executed
-# and then flesh it out on a live droplet.
-#
-#The configuration should,
-#1. Preserves metadata endpoint access via original gateway
-#2. Route all other traffic through NAT Gateway
-#3. Make routing persistent across reboots
+# Route Droplet egress through NAT Gateway while preserving access to DigitalOcean metadata endpoint.
+package_update: false
+package_upgrade: false
+
+write_files:
+  - path: /etc/netplan/99-natgw.yaml
+    permissions: '0644'
+    content: |
+      network:
+        version: 2
+        ethernets:
+          eth0:
+            routes:
+              - to: 169.254.169.254/32
+                via: ${original_gateway}
+          eth1:
+            routes:
+              - to: 0.0.0.0/0
+                via: ${nat_gateway_gateway_ip}
 
 runcmd:
-  - echo "Hello, World!" > /tmp/hello_world.txt
+  - original_gw=$(curl -s http://169.254.169.254/metadata/v1/interfaces/public/0/ipv4/gateway)
+  - ip route add 169.254.169.254 via $original_gw dev eth0 || true
+  - ip route replace default via ${nat_gateway_gateway_ip}
+  - netplan apply || true
