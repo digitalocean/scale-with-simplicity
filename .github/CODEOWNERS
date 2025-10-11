@@ -1,0 +1,12 @@
+# Global owners
+* @digitalocean/solutions-engineering
+
+# Terraform modules and reference architectures
+/reference-architectures/ @digitalocean/solutions-engineering
+/test/ @digitalocean/solutions-engineering
+
+# GitHub workflows and CI/CD
+/.github/ @digitalocean/solutions-engineering
+
+# Documentation
+*.md @digitalocean/solutions-engineering @digitalocean/technical-writing

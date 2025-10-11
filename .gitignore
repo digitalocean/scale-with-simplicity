@@ -20,9 +20,37 @@ override.tf.json
 terraform.rc
 terraform.tfvars
 
-
 # Ignore lock files
-.terraform.lock.hcl 
+.terraform.lock.hcl
 
-#Misc
+# Test output
 *.out
+*.test
+coverage.out
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Backup files
+*.bak
+*.backup
+
+# Log files
+*.log
