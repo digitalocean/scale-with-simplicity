@@ -250,6 +250,19 @@ resource "helm_release" "alloy" {
                   key_file  = "/etc/alloy/certs/tls.key"
                 }
               }
+              forward_to = [loki.process.database_logs.receiver]
+            }
+
+            // Process database logs with error resilience
+            loki.process "database_logs" {
+              // Add labels for easier querying in Grafana
+              stage.static_labels {
+                values = {
+                  job = "database-logs",
+                  component = "syslog",
+                  source = "database",
+                }
+              }
               forward_to = [loki.write.default.receiver]
             }
           EOT
