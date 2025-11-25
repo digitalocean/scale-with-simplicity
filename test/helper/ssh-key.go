@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-func CreateSshKey(client *godo.Client, keyName string) *godo.Key {
+func CreateSshKey(client *godo.Client, keyName string) (*keygen.KeyPair, *godo.Key) {
 	log.Printf("Generating SSH key pair: %s", keyName)
 	keyPair, err := keygen.New("")
 	if err != nil {
@@ -26,7 +26,7 @@ func CreateSshKey(client *godo.Client, keyName string) *godo.Key {
 		log.Panicf("Error adding SSH public key to DO: %v", err)
 	}
 	log.Printf("Added SSH public key to DO: %s (%v)", key.Name, key.ID)
-	return key
+	return keyPair, key
 }
 
 func DeleteSshKey(client *godo.Client, keyId int) {

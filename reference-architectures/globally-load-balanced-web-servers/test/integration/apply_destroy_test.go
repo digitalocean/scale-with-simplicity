@@ -30,7 +30,7 @@ func TestApplyAndDestroy(t *testing.T) {
 	ctx := context.Background()
 	client := helper.CreateGodoClient()
 	testDomainFqdn := helper.CreateTestDomain(client, constant.TestRootSubdomain, testNamePrefix)
-	sshKey := helper.CreateSshKey(client, testNamePrefix)
+	_, sshKey := helper.CreateSshKey(client, testNamePrefix)
 	cidrAssigner := helper.NewCidrAssigner(ctx, client)
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
 		TerraformDir: testDir,

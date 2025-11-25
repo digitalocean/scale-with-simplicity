@@ -1,0 +1,5 @@
+name_prefix         = "nat-gateway"
+region              = "sfo3"
+vpc_cidr            = "172.18.0.0/16"
+doks_cluster_subnet = "172.19.0.0/19"
+doks_service_subnet = "172.19.32.0/22"

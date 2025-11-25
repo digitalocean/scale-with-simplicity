@@ -1,0 +1,26 @@
+#cloud-config
+package_update: false
+package_upgrade: false
+
+write_files:
+  - path: /etc/netplan/99-natgw.yaml
+    permissions: "0600"
+    content: |
+      network:
+        version: 2
+        ethernets:
+          eth0:
+            routes:
+              - to: 169.254.169.254/32
+                via: ORIGINAL_GATEWAY_PLACEHOLDER
+          eth1:
+            routes:
+              - to: 0.0.0.0/0
+                via: ${nat_gateway_gateway_ip}
+
+runcmd:
+  - original_gw=$(curl -s http://169.254.169.254/metadata/v1/interfaces/public/0/ipv4/gateway)
+  - ip route add 169.254.169.254 via $original_gw dev eth0 || true
+  - sed -i "s/ORIGINAL_GATEWAY_PLACEHOLDER/$original_gw/g" /etc/netplan/99-natgw.yaml
+  - netplan apply || true
+  - ip route change default via ${nat_gateway_gateway_ip}
