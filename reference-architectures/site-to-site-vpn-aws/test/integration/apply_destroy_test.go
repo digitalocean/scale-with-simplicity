@@ -87,7 +87,7 @@ func TestApplyAndDestroy(t *testing.T) {
 
 	ctx := context.Background()
 	client := helper.CreateGodoClient()
-	sshKey := helper.CreateSshKey(client, testNamePrefix)
+	_, sshKey := helper.CreateSshKey(client, testNamePrefix)
 	cidrAssigner := helper.NewCidrAssigner(ctx, client)
 
 	// Configure Terraform options

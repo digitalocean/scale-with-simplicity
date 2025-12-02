@@ -11,6 +11,7 @@ This repo contains reference architectures developed by DigitalOcean to help use
 | Name                                                                                               | Use Case                                                                                                                            | Periodic Validation | YouTube Video |
 |----------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|---------------------|---------------|
 | [Globally Load Balanced Web Servers](./reference-architectures/globally-load-balanced-web-servers) | Load balanced web servers deployed into multiple regions with a global load balancer directing users to the region closest to them. | Yes                 | [Watch Tutorial](https://youtu.be/JRmCjIuOc4o?feature=shared) |
+| [NAT Gateway](./reference-architectures/nat-gateway)                                               | Route all egress traffic from DOKS cluster and Droplets through a NAT Gateway, providing a single static IP for outbound connectivity | Yes                 | Coming Soon |
 | [Partner Network Connect with AWS](./reference-architectures/partner-network-connect-aws)          | End-to-End connection between DO VPC and AWS VPC using Partner Network Connect with HA support                                      | No                  | Coming Soon |
 | [Site to Site VPN with AWS](./reference-architectures/site-to-site-vpn-aws)                        | IPSec VPN Gateway Droplet connecting DO VPC and DOKS cluster with AWS VPC                                                           | No                  | [Watch Tutorial](https://youtu.be/TCELPPiaI20?feature=shared) |
 
@@ -25,7 +26,7 @@ This section helps beginners set up Terraform and DigitalOcean access.
 1. [Install Terraform](https://developer.hashicorp.com/terraform/downloads)
 2. Export your DigitalOcean token:
    ```bash
-   export DIGITALOCEAN_TOKEN="your_token_here"
+   export DIGITALOCEAN_ACCESS_TOKEN="your_token_here"
    ```
 3. Clone this repo and navigate to the desired reference architecture.
 4. Create a `terraform.tfvars` file with required inputs.
@@ -46,6 +47,7 @@ A typical way to deploy for testing purposes would be to:
 - Ensure you have your DigitalOcean [Personal Access Token](https://docs.digitalocean.com/reference/api/create-personal-access-token/) set in the `DIGITALOCEAN_TOKEN` environment variable.
 - Clone the repo.
 - `cd` into the `terraform` directory within the reference architecture you want to test.
+  - **Note**: Some reference architectures use multiple Terraform stacks (e.g., `terraform/1-infra/`, `terraform/2-routes/`) to handle dependencies between resources. These must be deployed sequentially, starting with stack 1. Check the reference architecture's README for specific deployment instructions.
 - Create a `tfvars` file with the inputs needed for the reference architecture module.
 - Run:
   ```bash
@@ -54,7 +56,7 @@ A typical way to deploy for testing purposes would be to:
   terraform apply -var-file=<path to tfvars file>
   ```
 - Test your deployment.
-- When done, destroy the resources:
+- When done, destroy the resources in reverse order (for multi-stack architectures, destroy the highest numbered stack first):
   ```bash
   terraform destroy -var-file=<path to tfvars file>
   ```
