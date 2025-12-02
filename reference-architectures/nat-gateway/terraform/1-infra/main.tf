@@ -75,14 +75,14 @@ data "digitalocean_sizes" "slug_2vcpu_4gb" {
   }
 }
 
+# This data source retrieves a list of all available Kubernetes versions on DigitalOcean, so we can use the latest version for our cluster.
+data "digitalocean_kubernetes_versions" "all" {}
 
 # DOKS Cluster with Routing Agent enabled
-# NOTE: Using 1.33.6-do.0 to work around Routing Agent bug in 1.34.x
-# TODO: Update to latest version when bug is fixed
 resource "digitalocean_kubernetes_cluster" "main" {
   name           = "${var.name_prefix}-cluster"
   region         = var.region
-  version        = "1.33.6-do.0"
+  version        = data.digitalocean_kubernetes_versions.all.latest_version
   vpc_uuid       = digitalocean_vpc.main.id
   cluster_subnet = var.doks_cluster_subnet
   service_subnet = var.doks_service_subnet
