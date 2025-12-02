@@ -53,9 +53,10 @@ resource "digitalocean_kubernetes_cluster" "primary_cluster" {
   service_subnet                   = var.doks_service_subnet
   destroy_all_associated_resources = true
   ha                               = var.doks_control_plane_ha
-  routing_agent {
-    enabled = true
-  }
+  # Disabled for now due to a bug with routing to NLB for a Gateway from within the cluster.
+  # routing_agent {
+  #   enabled = true
+  # }
   tags = local.tags
   node_pool {
     name       = "${var.name_prefix}-${data.digitalocean_sizes.slug_2vcpu_4gb.sizes[0].slug}"
@@ -92,5 +93,11 @@ resource "digitalocean_database_cluster" "cart_service" {
   node_count           = 1
   private_network_uuid = digitalocean_vpc.doks.id
   tags                 = local.tags
+}
+
+# Bucket used store logs used by Loki
+resource "digitalocean_spaces_bucket" "loki_logs" {
+  name   = "${var.name_prefix}-loki-logs"
+  region = var.region
 }
 

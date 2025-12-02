@@ -24,3 +24,11 @@ provider "helm" {
   }
 }
 
+resource "kubernetes_namespace_v1" "demo" {
+  metadata {
+    annotations = {
+      name = "demo"
+    }
+    name = "demo"
+  }
+}

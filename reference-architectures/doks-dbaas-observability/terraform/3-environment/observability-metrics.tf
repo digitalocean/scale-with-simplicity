@@ -2,17 +2,18 @@
 # These credentials are used to access the metrics endpoints of the databases.
 data "digitalocean_database_metrics_credentials" "default" {}
 
-# This resource creates a ServiceMonitor for the NGINX Ingress Controller.
-# A ServiceMonitor is a custom resource defined by the Prometheus Operator, which declaratively specifies
-# how groups of services should be monitored. This ensures that Prometheus will scrape metrics
-# from the ingress controller, providing visibility into ingress traffic and performance.
-# This will be removed once Cilium Ingress is supported and provides its own ServiceMonitor.
-resource "kubernetes_manifest" "ingress_nginx_servicemonitor" {
+# PodMonitor for Cilium Metrics (Agent and Envoy)
+# This monitors both Cilium agent and Envoy proxy metrics directly from the Cilium pods.
+# Since Cilium runs as a DaemonSet, the pods are stable and scraping directly is efficient.
+# - Port 9090 (prometheus): Cilium agent metrics for CNI health, BPF operations, and policy enforcement
+# - Port 9964 (envoy-metrics): Envoy proxy metrics for L7 visibility including HTTP request rates,
+#   latencies, and status codes for Gateway traffic
+resource "kubernetes_manifest" "cilium_podmonitor" {
   manifest = {
     apiVersion = "monitoring.coreos.com/v1"
-    kind       = "ServiceMonitor"
+    kind       = "PodMonitor"
     metadata = {
-      name      = "ingress-nginx-controller"
+      name      = "cilium"
       namespace = "cluster-services"
       labels = {
         release = "kube-prometheus-stack"
@@ -21,18 +22,22 @@ resource "kubernetes_manifest" "ingress_nginx_servicemonitor" {
     spec = {
       selector = {
         matchLabels = {
-          "app.kubernetes.io/component" = "controller"
-          "app.kubernetes.io/instance"  = "ingress-nginx"
-          "app.kubernetes.io/name"      = "ingress-nginx"
+          "k8s-app" = "cilium"
         }
       }
       namespaceSelector = {
-        matchNames = ["cluster-services"]
+        matchNames = ["kube-system"]
       }
-      endpoints = [
+      podMetricsEndpoints = [
         {
-          port     = "metrics"
+          port     = "prometheus"
           interval = "30s"
+          path     = "/metrics"
+        },
+        {
+          port     = "envoy-metrics"
+          interval = "30s"
+          path     = "/metrics"
         }
       ]
     }
@@ -59,7 +64,7 @@ data "digitalocean_database_ca" "adservice" {
 resource "kubernetes_secret_v1" "adservice_database" {
   metadata {
     name      = "adservice-database"
-    namespace = "default"
+    namespace = kubernetes_namespace_v1.demo.metadata[0].name
   }
   data = {
     ca-cert           = data.digitalocean_database_ca.adservice.certificate
@@ -77,7 +82,7 @@ resource "kubernetes_secret_v1" "adservice_database" {
 resource "kubernetes_config_map_v1" "adservice_database_configuration" {
   metadata {
     name      = "adservice-database-configuration"
-    namespace = "default"
+    namespace = kubernetes_namespace_v1.demo.metadata[0].name
   }
   data = {
     postgres-password = data.digitalocean_database_cluster.adservice.password
@@ -99,7 +104,7 @@ resource "kubernetes_manifest" "adservice_database_scrape_config" {
     kind       = "ScrapeConfig"
     metadata = {
       name      = "adservice-database"
-      namespace = "default"
+      namespace = kubernetes_namespace_v1.demo.metadata[0].name
       labels = {
         # Label used to discover ScrapeConfigs matching the name of helm_release
         release = "kube-prometheus-stack"
@@ -148,7 +153,7 @@ resource "helm_release" "postgres_exporter" {
   repository = "https://prometheus-community.github.io/helm-charts"
   chart      = "prometheus-postgres-exporter"
   # Installing in default as this is specific to the demo app, similar to the ScrapeConfigs
-  namespace = "default"
+  namespace = kubernetes_namespace_v1.demo.metadata[0].name
 
   # Pass the YAML produced from the map above
   values = [yamlencode({
@@ -247,7 +252,7 @@ data "digitalocean_database_ca" "cartservice" {
 resource "kubernetes_secret_v1" "cart_database" {
   metadata {
     name      = "cartservice-database"
-    namespace = "default"
+    namespace = kubernetes_namespace_v1.demo.metadata[0].name
   }
   data = {
     ca-cert = data.digitalocean_database_ca.cartservice.certificate
@@ -269,7 +274,7 @@ resource "kubernetes_manifest" "cartservice_database_scrape_config" {
     kind       = "ScrapeConfig"
     metadata = {
       name      = "cartservice-database"
-      namespace = "default"
+      namespace = kubernetes_namespace_v1.demo.metadata[0].name
       labels = {
         # Label used to discover ScrapeConfigs matching the name of helm_release
         release = "kube-prometheus-stack"
@@ -316,7 +321,7 @@ resource "helm_release" "redis_exporter_cartservice" {
   name       = "redis-exporter-cartservice"
   repository = "https://prometheus-community.github.io/helm-charts"
   chart      = "prometheus-redis-exporter"
-  namespace  = "default"
+  namespace  = kubernetes_namespace_v1.demo.metadata[0].name
 
   values = [
     yamlencode({
