@@ -35,12 +35,12 @@ output "bastion_public_ip" {
 
 output "droplet_private_ip" {
   description = "Private IP of the droplet"
-  value       = digitalocean_droplet.main.ipv4_address_private
+  value       = digitalocean_droplet.private.ipv4_address_private
 }
 
 output "droplet_public_ip" {
   description = "Public IP of the droplet"
-  value       = digitalocean_droplet.main.ipv4_address
+  value       = digitalocean_droplet.private.ipv4_address
 }
 
 output "ubuntu_image" {
