@@ -113,7 +113,7 @@ resource "digitalocean_droplet" "bastion" {
 }
 
 # Droplet with cloud-init to route traffic through NAT Gateway
-resource "digitalocean_droplet" "main" {
+resource "digitalocean_droplet" "private" {
   image    = data.digitalocean_images.ubuntu.images[0].slug
   name     = "${var.name_prefix}-droplet"
   region   = var.region
@@ -126,13 +126,14 @@ resource "digitalocean_droplet" "main" {
     nat_gateway_gateway_ip = one(digitalocean_vpc_nat_gateway.main.vpcs).gateway_ip
   })
 
-  # Ensure NAT Gateway is created first
-  depends_on = [digitalocean_vpc_nat_gateway.main]
+
 }
 
 # Firewall for bastion droplet - allows SSH from anywhere
 resource "digitalocean_firewall" "bastion" {
   name = "${var.name_prefix}-bastion-fw"
+  # Firewall requires the tag to exist to reference the tag.
+  depends_on = [digitalocean_droplet.bastion]
 
   tags = ["bastion"]
 
@@ -165,6 +166,8 @@ resource "digitalocean_firewall" "bastion" {
 # Firewall for private NAT-routed droplet - allows SSH only from RFC1918 addresses
 resource "digitalocean_firewall" "private" {
   name = "${var.name_prefix}-private-fw"
+  # Firewall requires the tag to exist to reference the tag.
+  depends_on = [digitalocean_droplet.private]
 
   tags = ["private"]
 
