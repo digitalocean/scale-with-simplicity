@@ -8,7 +8,8 @@ RUN apk add --no-cache \
     curl \
     git \
     ca-certificates \
-    bash
+    bash \
+    openssh-client
 
 # Install Terraform
 ARG TERRAFORM_VERSION=1.11.4
