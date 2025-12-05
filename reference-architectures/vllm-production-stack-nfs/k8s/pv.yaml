@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: vllm-models-pv
+  labels:
+    pv-name: vllm-models-pv
+spec:
+  capacity:
+    storage: 1000Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    server: <NFS_HOST>       # from API response: share.host
+    path: <NFS_MOUNT_PATH>   # from API response: share.mount_path
