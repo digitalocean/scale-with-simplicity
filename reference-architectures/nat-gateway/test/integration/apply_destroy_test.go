@@ -100,7 +100,7 @@ func TestApplyAndDestroy(t *testing.T) {
 
 	// Give the Route CRD time to be processed by the Routing Agent
 	logger.Log(t, "Waiting for Route CRD to be processed...")
-	time.Sleep(30 * time.Second)
+	time.Sleep(60 * time.Second)
 
 	// Write kubeconfig to temp file for kubectl access
 	kubeconfigPath := filepath.Join(testDir, "kubeconfig.yaml")
