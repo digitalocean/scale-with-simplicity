@@ -84,6 +84,10 @@ func TestApplyAndDestroy(t *testing.T) {
 	logger.Logf(t, "Stack 1 outputs - Cluster: %s, NAT Public IP: %s, Bastion IP: %s, Droplet Private IP: %s",
 		clusterName, natPublicIP, bastionPublicIP, dropletPrivateIP)
 
+	// Give the Route CRD time to be registered in DOKS
+	logger.Log(t, "Waiting for Route CRD to be registered...")
+	time.Sleep(30 * time.Second)
+
 	// Configure Terraform options for Stack 2 (routes)
 	// NO variables needed - Stack 2 reads everything from ../1-infra/terraform.tfstate
 	stack2Options := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
@@ -98,9 +102,9 @@ func TestApplyAndDestroy(t *testing.T) {
 	logger.Log(t, "Applying Stack 2 (routing configuration)...")
 	terraform.InitAndApply(t, stack2Options)
 
-	// Give the Route CRD time to be processed by the Routing Agent
-	logger.Log(t, "Waiting for Route CRD to be processed...")
-	time.Sleep(60 * time.Second)
+	// Give the Route time to be processed by the Routing Agent
+	logger.Log(t, "Waiting for Route to be processed by the Routing Agent")
+	time.Sleep(30 * time.Second)
 
 	// Write kubeconfig to temp file for kubectl access
 	kubeconfigPath := filepath.Join(testDir, "kubeconfig.yaml")
