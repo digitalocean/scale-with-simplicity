@@ -34,6 +34,46 @@ type PodRunResult struct {
 	Phase   corev1.PodPhase
 }
 
+// WaitForCRDOptions configures the behavior of WaitForCRD
+type WaitForCRDOptions struct {
+	MaxRetries         int           // Number of retry attempts (default: 12)
+	TimeBetweenRetries time.Duration // Time between attempts (default: 10s)
+}
+
+// WaitForCRD waits for a Custom Resource Definition to be registered in the cluster.
+// The crdName should be the full CRD name (e.g., "routes.networking.doks.digitalocean.com").
+// Returns an error if the CRD is not registered within the timeout period.
+func WaitForCRD(t *testing.T, kubectlOptions *k8s.KubectlOptions, crdName string, opts *WaitForCRDOptions) error {
+	// Set defaults
+	maxRetries := 12
+	timeBetweenRetries := 10 * time.Second
+
+	if opts != nil {
+		if opts.MaxRetries > 0 {
+			maxRetries = opts.MaxRetries
+		}
+		if opts.TimeBetweenRetries > 0 {
+			timeBetweenRetries = opts.TimeBetweenRetries
+		}
+	}
+
+	description := fmt.Sprintf("Waiting for CRD %s to be registered", crdName)
+	_, err := retry.DoWithRetryE(t, description, maxRetries, timeBetweenRetries, func() (string, error) {
+		_, err := k8s.RunKubectlAndGetOutputE(t, kubectlOptions, "get", "crd", crdName)
+		if err != nil {
+			return "", fmt.Errorf("CRD %s not yet registered: %w", crdName, err)
+		}
+		return "CRD is registered", nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("CRD %s was not registered within timeout: %w", crdName, err)
+	}
+
+	logger.Logf(t, "CRD %s is now registered", crdName)
+	return nil
+}
+
 // RunPod creates a pod, waits for completion, retrieves logs, and cleans up.
 // It uses the Kubernetes client-go library directly instead of kubectl CLI commands.
 // The pod is automatically deleted after logs are retrieved, even if an error occurs.

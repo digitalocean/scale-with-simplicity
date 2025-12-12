@@ -84,9 +84,15 @@ func TestApplyAndDestroy(t *testing.T) {
 	logger.Logf(t, "Stack 1 outputs - Cluster: %s, NAT Public IP: %s, Bastion IP: %s, Droplet Private IP: %s",
 		clusterName, natPublicIP, bastionPublicIP, dropletPrivateIP)
 
-	// Give the Route CRD time to be registered in DOKS
+	// Wait for the Route CRD to be registered by the DOKS Routing Agent
+	kubeconfigPath := filepath.Join(testDir, "kubeconfig.yaml")
+	kubectlOptions := configureKubectl(t, client, clusterName, kubeconfigPath)
+
 	logger.Log(t, "Waiting for Route CRD to be registered...")
-	time.Sleep(30 * time.Second)
+	err = helper.WaitForCRD(t, kubectlOptions, "routes.networking.doks.digitalocean.com", nil)
+	if err != nil {
+		t.Fatalf("Route CRD not available: %v", err)
+	}
 
 	// Configure Terraform options for Stack 2 (routes)
 	// NO variables needed - Stack 2 reads everything from ../1-infra/terraform.tfstate
@@ -105,13 +111,6 @@ func TestApplyAndDestroy(t *testing.T) {
 	// Give the Route time to be processed by the Routing Agent
 	logger.Log(t, "Waiting for Route to be processed by the Routing Agent")
 	time.Sleep(30 * time.Second)
-
-	// Write kubeconfig to temp file for kubectl access
-	kubeconfigPath := filepath.Join(testDir, "kubeconfig.yaml")
-
-	// Configure kubectl using the cluster endpoint and credentials from Stack 1
-	logger.Log(t, "Configuring kubectl access to cluster...")
-	kubectlOptions := configureKubectl(t, client, clusterName, kubeconfigPath)
 
 	// Verify egress routing from Kubernetes Pod
 	logger.Log(t, "Verifying egress routing from Kubernetes pod...")
