@@ -25,6 +25,12 @@ RUN curl -sSL https://github.com/terraform-linters/tflint/releases/download/${TF
  && mv tflint /usr/local/bin/tflint \
  && rm tflint.zip
 
+# Install kubectl
+ARG KUBECTL_VERSION=v1.32.0
+RUN curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" \
+ && chmod +x kubectl \
+ && mv kubectl /usr/local/bin/kubectl
+
 # Set up workdir and environment
 WORKDIR /workspace
 ENV GO111MODULE=on
