@@ -1,0 +1,13 @@
+# Gateway for external access via Cilium Gateway API.
+# Creates a LoadBalancer that exposes the vLLM service to the internet.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: vllm-gateway
+  namespace: vllm
+spec:
+  gatewayClassName: cilium
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80

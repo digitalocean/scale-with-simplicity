@@ -1,0 +1,16 @@
+name: vllm-nfs PR Check
+on:
+  pull_request:
+    paths:
+      - 'reference-architectures/vllm-nfs/**/*.tf'
+      - 'reference-architectures/vllm-nfs/test/**/*'
+      - '.github/workflows/vllm-nfs-pr-check.yaml'
+      - '.github/workflows/workflow-terraform-pr-check.yaml'
+
+jobs:
+  call-common:
+    uses: ./.github/workflows/workflow-terraform-pr-check.yaml
+    with:
+      module_path: reference-architectures/vllm-nfs
+    secrets:
+      DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.TEST_DIGITALOCEAN_ACCESS_TOKEN }}

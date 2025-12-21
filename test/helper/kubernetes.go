@@ -5,10 +5,12 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/digitalocean/godo"
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	"github.com/gruntwork-io/terratest/modules/logger"
 	"github.com/gruntwork-io/terratest/modules/random"
@@ -193,4 +195,48 @@ func RunPod(t *testing.T, kubectlOptions *k8s.KubectlOptions, opts PodRunOptions
 	result.Logs = buf.String()
 
 	return result, nil
+}
+
+// ConfigureKubectl writes a kubeconfig file for a DOKS cluster and returns kubectl options.
+// It fetches the kubeconfig via the DigitalOcean API using the cluster name.
+func ConfigureKubectl(t *testing.T, client *godo.Client, clusterName string, kubeconfigPath string, namespace string) *k8s.KubectlOptions {
+	ctx := context.Background()
+
+	// Get the cluster's kubeconfig via DigitalOcean API
+	logger.Logf(t, "Fetching kubeconfig for cluster: %s", clusterName)
+
+	// List all clusters and find ours by name
+	clusters, _, err := client.Kubernetes.List(ctx, nil)
+	if err != nil {
+		t.Fatalf("Failed to list clusters: %v", err)
+	}
+
+	var clusterID string
+	for _, cluster := range clusters {
+		if cluster.Name == clusterName {
+			clusterID = cluster.ID
+			break
+		}
+	}
+
+	if clusterID == "" {
+		t.Fatalf("Cluster %s not found", clusterName)
+	}
+
+	// Get kubeconfig for the cluster
+	kubeconfig, _, err := client.Kubernetes.GetKubeConfig(ctx, clusterID)
+	if err != nil {
+		t.Fatalf("Failed to get kubeconfig: %v", err)
+	}
+
+	// Write kubeconfig content to file
+	err = os.WriteFile(kubeconfigPath, kubeconfig.KubeconfigYAML, 0600)
+	if err != nil {
+		t.Fatalf("Failed to write kubeconfig: %v", err)
+	}
+
+	logger.Logf(t, "Kubeconfig written to: %s", kubeconfigPath)
+
+	// Return kubectl options with the kubeconfig path
+	return k8s.NewKubectlOptions("", kubeconfigPath, namespace)
 }
