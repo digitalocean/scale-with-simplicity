@@ -22,11 +22,14 @@ spec:
               export PYTHONPATH=/tmp/pip &&
               python -c "from huggingface_hub import snapshot_download; snapshot_download('${model_id}', local_dir='/models/${model_name}')"
           env:
+            # HF_TOKEN is optional - only needed for gated/private models.
+            # Public models like Qwen work without authentication.
             - name: HF_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: hf-token
                   key: HF_TOKEN
+                  optional: true
             - name: HOME
               value: /tmp
             - name: HF_HOME

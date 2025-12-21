@@ -41,11 +41,14 @@ spec:
           env:
             - name: VLLM_PORT
               value: "8000"
+            # HF_TOKEN is optional - only needed for gated/private models.
+            # Public models like Qwen work without authentication.
             - name: HF_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: hf-token
                   key: HF_TOKEN
+                  optional: true
             # HF_HUB_OFFLINE prevents vLLM from attempting to download or update
             # model files from HuggingFace Hub. The model is pre-downloaded to NFS
             # by the model-download job, so online access is not needed.
