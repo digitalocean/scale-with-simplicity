@@ -1,0 +1,18 @@
+# PersistentVolume for NFS model storage.
+# When applied via Terraform (terraform/2-vllm), the template variables are populated
+# from Stack 1 outputs. For manual kubectl apply, replace the placeholders with actual values.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: vllm-models-pv
+  labels:
+    pv-name: vllm-models-pv
+spec:
+  capacity:
+    storage: ${nfs_size_gb}Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    server: ${nfs_host}
+    path: ${nfs_mount_path}

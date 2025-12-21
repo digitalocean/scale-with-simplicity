@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm
+  namespace: vllm
+  labels:
+    app: vllm
+spec:
+  replicas: 1
+  # maxSurge: 0 ensures old pod is deleted before new pod is created,
+  # which is required because each node has only one GPU.
+  # maxUnavailable: 1 ensures only one pod is replaced at a time.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: vllm
+  template:
+    metadata:
+      labels:
+        app: vllm
+    spec:
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: vllm
+          image: vllm/vllm-openai:latest
+          args:
+            - --model
+            - /models/${model_name}
+            - --served-model-name
+            - ${model_name}
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: VLLM_PORT
+              value: "8000"
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: hf-token
+                  key: HF_TOKEN
+            # HF_HUB_OFFLINE prevents vLLM from attempting to download or update
+            # model files from HuggingFace Hub. The model is pre-downloaded to NFS
+            # by the model-download job, so online access is not needed.
+            - name: HF_HUB_OFFLINE
+              value: "1"
+          volumeMounts:
+            - name: model-cache
+              mountPath: /models
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+            requests:
+              nvidia.com/gpu: 1
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 60
+            periodSeconds: 30
+      volumes:
+        - name: model-cache
+          persistentVolumeClaim:
+            claimName: vllm-models-pvc

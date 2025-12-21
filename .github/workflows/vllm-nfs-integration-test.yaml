@@ -1,0 +1,13 @@
+name: vllm-nfs Apply-Destroy
+on:
+  schedule:
+    - cron: "0 14 * * *"
+  workflow_dispatch:
+
+jobs:
+  call-common:
+    uses: ./.github/workflows/workflow-terraform-integration-test.yaml
+    with:
+      module_path: reference-architectures/vllm-nfs
+    secrets:
+      DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.TEST_DIGITALOCEAN_ACCESS_TOKEN }}

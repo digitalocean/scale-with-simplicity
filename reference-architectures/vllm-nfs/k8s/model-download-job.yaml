@@ -1,0 +1,40 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: model-download
+  namespace: vllm
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+      containers:
+        - name: download
+          image: python:3.11-slim
+          command:
+            - /bin/sh
+            - -c
+            - |
+              pip install --target=/tmp/pip huggingface_hub &&
+              export PYTHONPATH=/tmp/pip &&
+              python -c "from huggingface_hub import snapshot_download; snapshot_download('${model_id}', local_dir='/models/${model_name}')"
+          env:
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: hf-token
+                  key: HF_TOKEN
+            - name: HOME
+              value: /tmp
+            - name: HF_HOME
+              value: /tmp/hf_home
+          volumeMounts:
+            - name: nfs-storage
+              mountPath: /models
+      volumes:
+        - name: nfs-storage
+          persistentVolumeClaim:
+            claimName: vllm-models-pvc
