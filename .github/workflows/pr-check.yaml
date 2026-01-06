@@ -1,0 +1,92 @@
+name: PR Check
+on:
+  pull_request:
+    paths:
+      - 'modules/**'
+      - 'reference-architectures/**'
+      - '.github/workflows/pr-check.yaml'
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      modules: ${{ steps.filter-modules.outputs.all_changed_files }}
+      modules_count: ${{ steps.filter-modules.outputs.all_changed_files_count }}
+      ras: ${{ steps.filter-ras.outputs.all_changed_files }}
+      ras_count: ${{ steps.filter-ras.outputs.all_changed_files_count }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changed modules
+        id: filter-modules
+        uses: tj-actions/changed-files@v45
+        with:
+          files: modules/**
+          dir_names: true
+          dir_names_max_depth: 2
+          json: true
+          escape_json: false
+
+      - name: Get changed reference architectures
+        id: filter-ras
+        uses: tj-actions/changed-files@v45
+        with:
+          files: reference-architectures/**
+          dir_names: true
+          dir_names_max_depth: 2
+          json: true
+          escape_json: false
+
+  test-modules:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.modules_count > 0
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{ fromJSON(needs.detect-changes.outputs.modules) }}
+    container:
+      image: registry.digitalocean.com/scale-with-simplicity-test/terraform-test:latest
+      credentials:
+        username: solutions@digitalocean.com
+        password: ${{ secrets.TEST_DIGITALOCEAN_ACCESS_TOKEN }}
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.SOLUTIONS_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.SOLUTIONS_AWS_SECRET_ACCESS_KEY }}
+      DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.TEST_DIGITALOCEAN_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint
+        working-directory: ${{ matrix.module }}
+        run: make lint
+      - name: Unit Tests
+        working-directory: ${{ matrix.module }}
+        run: make test-unit
+
+  test-ras:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.ras_count > 0
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ra: ${{ fromJSON(needs.detect-changes.outputs.ras) }}
+    container:
+      image: registry.digitalocean.com/scale-with-simplicity-test/terraform-test:latest
+      credentials:
+        username: solutions@digitalocean.com
+        password: ${{ secrets.TEST_DIGITALOCEAN_ACCESS_TOKEN }}
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.SOLUTIONS_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.SOLUTIONS_AWS_SECRET_ACCESS_KEY }}
+      DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.TEST_DIGITALOCEAN_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint
+        working-directory: ${{ matrix.ra }}
+        run: make lint
+      - name: Unit Tests
+        working-directory: ${{ matrix.ra }}
+        run: make test-unit

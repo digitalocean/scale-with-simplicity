@@ -10,6 +10,11 @@ This is the **Scale With Simplicity** repository - DigitalOcean's collection of 
 
 ```
 scale-with-simplicity/
+├── modules/                        # Reusable Terraform modules
+│   ├── glb-stack/                  # Global Load Balancer stack
+│   ├── ipsec-gateway/              # IPSec VPN gateway droplet
+│   ├── multi-region-vpc/           # Multi-region VPC mesh with peering
+│   └── partner-network-connect-aws/ # DO to AWS via Megaport
 ├── reference-architectures/
 │   └── <ra-slug>/
 │       ├── <ra-slug>.png          # Architecture diagram
@@ -105,14 +110,16 @@ terraform destroy -var-file=<path-to-tfvars>
 
 ### Module References
 
-Reference reusable Terraform modules via GitHub URLs with version pinning:
+Reference reusable Terraform modules using relative paths from the `modules/` directory:
 ```hcl
 module "multi_region_vpc" {
-  source      = "github.com/digitalocean/terraform-digitalocean-multi-region-vpc?ref=v1.0.0"
+  source      = "../../../modules/multi-region-vpc"
   name_prefix = var.name_prefix
   vpcs        = var.vpcs
 }
 ```
+
+The relative path depends on your Terraform directory depth. For reference architectures at `reference-architectures/<ra-slug>/terraform/`, the path is `../../../modules/<module-name>`.
 
 See [TERRAFORM-MODULE-LIBRARY.md](./TERRAFORM-MODULE-LIBRARY.md) for available modules.
 
@@ -564,34 +571,20 @@ func TestApplyAndDestroy(t *testing.T) {
 
 ## CI/CD Workflows
 
-Each RA requires two GitHub Actions workflows in `.github/workflows/`:
+### PR Check Workflow (Automatic)
 
-### PR Check Workflow (`<ra-slug>-pr-check.yaml`)
+A single dynamic workflow (`.github/workflows/pr-check.yaml`) automatically detects and tests any changed modules or reference architectures. No workflow configuration is needed when adding new modules or RAs.
 
-Triggered on PR changes to RA files. Runs linting and unit tests.
+The workflow:
+1. Detects changed directories under `modules/` and `reference-architectures/`
+2. Creates parallel test jobs for each changed directory
+3. Runs `make lint` and `make test-unit` for each
 
-```yaml
-name: <ra-slug> PR Check
-on:
-  pull_request:
-    paths:
-      - 'reference-architectures/<ra-slug>/**/*.tf'
-      - 'reference-architectures/<ra-slug>/test/**/*'
-      - '.github/workflows/<ra-slug>-pr-check.yaml'
-      - '.github/workflows/workflow-terraform-pr-check.yaml'
-
-jobs:
-  call-common:
-    uses: ./.github/workflows/workflow-terraform-pr-check.yaml
-    with:
-      module_path: reference-architectures/<ra-slug>
-    secrets:
-      DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.TEST_DIGITALOCEAN_ACCESS_TOKEN }}
-```
+**Adding a new RA or module requires NO workflow changes** - just ensure it has a standard Makefile with `lint` and `test-unit` targets.
 
 ### Integration Test Workflow (`<ra-slug>-integration-test.yaml`)
 
-Scheduled daily or on-demand. Runs full apply/destroy tests.
+Scheduled daily or on-demand. Runs full apply/destroy tests. Each RA that requires integration testing needs its own workflow file with a unique cron schedule.
 
 ```yaml
 name: <ra-slug> Apply-Destroy
@@ -629,7 +622,7 @@ See [CONTRIBUTE.md](./CONTRIBUTE.md) for detailed guidelines.
 
 ## Important Conventions
 
-- **Module versioning**: Always pin module versions with `?ref=vX.Y.Z`
+- **Module references**: Use relative paths to reference modules from the `modules/` directory
 - **Resource naming**: Use `name_prefix` consistently across all resources
 - **Tagging**: Tag droplets and resources for load balancer targeting and organization
 - **Secrets**: Never commit secrets; use environment variables or generate dynamically in tests

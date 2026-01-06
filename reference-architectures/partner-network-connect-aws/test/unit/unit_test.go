@@ -21,14 +21,16 @@ func TestPlanWithHa(t *testing.T) {
 		t.Skip("Skipping test: MEGAPORT_ACCESS_KEY and MEGAPORT_SECRET_KEY must be set to run this test")
 	}
 
-	testDir := test_structure.CopyTerraformFolderToTemp(t, "../..", "./terraform")
-	err := files.CopyFile("../test.tfvars", filepath.Join(testDir, "test.tfvars"))
+	// Copy from repo root to preserve relative module paths (../../../modules)
+	testDir := test_structure.CopyTerraformFolderToTemp(t, "../../../..", ".")
+	terraformDir := filepath.Join(testDir, "reference-architectures/partner-network-connect-aws/terraform")
+	err := files.CopyFile("../test.tfvars", filepath.Join(terraformDir, "test.tfvars"))
 	if err != nil {
 		t.Fatalf("Failed to copy tfvars file: %v", err)
 	}
 
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-		TerraformDir: testDir,
+		TerraformDir: terraformDir,
 		MixedVars:    []terraform.Var{terraform.VarFile("test.tfvars")},
 		NoColor:      true,
 		PlanFilePath: "plan.out",
@@ -53,14 +55,16 @@ func TestPlanWithoutHa(t *testing.T) {
 		t.Skip("Skipping test: MEGAPORT_ACCESS_KEY and MEGAPORT_SECRET_KEY must be set to run this test")
 	}
 
-	testDir := test_structure.CopyTerraformFolderToTemp(t, "../..", "./terraform")
-	err := files.CopyFile("../test.tfvars", filepath.Join(testDir, "test.tfvars"))
+	// Copy from repo root to preserve relative module paths (../../../modules)
+	testDir := test_structure.CopyTerraformFolderToTemp(t, "../../../..", ".")
+	terraformDir := filepath.Join(testDir, "reference-architectures/partner-network-connect-aws/terraform")
+	err := files.CopyFile("../test.tfvars", filepath.Join(terraformDir, "test.tfvars"))
 	if err != nil {
 		t.Fatalf("Failed to copy tfvars file: %v", err)
 	}
 
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-		TerraformDir: testDir,
+		TerraformDir: terraformDir,
 		MixedVars:    []terraform.Var{terraform.VarFile("test.tfvars"), terraform.VarInline("ha_enabled", false)},
 		NoColor:      true,
 		PlanFilePath: "plan.out",

@@ -4,10 +4,9 @@
 # so resources in different regions can communicate privately. The
 # name_prefix is used to tag/namesake things consistently; "vpcs" is the
 # list of region+CIDR pairs. See the multi-region VPC module README for more details
-# https://github.com/digitalocean/terraform-digitalocean-multi-region-vpc
 # -------------------------------------------------------------------
 module "multi_region_vpc" {
-  source      = "github.com/digitalocean/terraform-digitalocean-multi-region-vpc?ref=v1.0.0"
+  source      = "../../../modules/multi-region-vpc"
   name_prefix = var.name_prefix
   vpcs        = var.vpcs
 }
@@ -32,12 +31,9 @@ resource "digitalocean_certificate" "cert" {
 #   * A Global Load Balancer that fronts the regionals with anycast IPs,
 #     optional CDN, and HTTPS handling.
 #   * Optional DNS records to reach each region directly.
-#
-# See the GLB Stack README for more details:
-# https://github.com/digitalocean/terraform-digitalocean-glb-stack/blob/main/README.md
 # -------------------------------------------------------------------
 module "glb_stack" {
-  source      = "github.com/digitalocean/terraform-digitalocean-glb-stack?ref=v1.0.0"
+  source      = "../../../modules/glb-stack"
   name_prefix = var.name_prefix
 
   # Supply the list of region/VPC pairs the GLB stack should target.

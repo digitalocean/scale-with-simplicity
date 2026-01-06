@@ -12,14 +12,16 @@ import (
 
 func TestCreateMultipleDroplets(t *testing.T) {
 	t.Parallel()
-	testDir := test_structure.CopyTerraformFolderToTemp(t, "../..", "./terraform")
-	err := files.CopyFile("../test.tfvars", filepath.Join(testDir, "test.tfvars"))
+	// Copy from repo root to preserve relative module paths (../../../modules)
+	testDir := test_structure.CopyTerraformFolderToTemp(t, "../../../..", ".")
+	terraformDir := filepath.Join(testDir, "reference-architectures/globally-load-balanced-web-servers/terraform")
+	err := files.CopyFile("../test.tfvars", filepath.Join(terraformDir, "test.tfvars"))
 	if err != nil {
 		t.Fatalf("Failed to copy tfvars file: %v", err)
 	}
 
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-		TerraformDir: testDir,
+		TerraformDir: terraformDir,
 		MixedVars:    []terraform.Var{terraform.VarInline("droplet_count", 2), terraform.VarFile("test.tfvars")},
 		NoColor:      true,
 		PlanFilePath: "plan.out",
