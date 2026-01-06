@@ -4,7 +4,7 @@ go 1.24.2
 
 require (
 	github.com/charmbracelet/keygen v0.5.3
-	github.com/digitalocean/godo v1.155.0
+	github.com/digitalocean/godo v1.171.0
 	github.com/digitalocean/scale-with-simplicity/test v0.0.0
 	github.com/gruntwork-io/terratest v0.50.0
 )

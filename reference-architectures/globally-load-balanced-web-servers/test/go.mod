@@ -55,7 +55,7 @@ require (
 	github.com/charmbracelet/keygen v0.5.3 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/digitalocean/godo v1.156.0 // indirect
+	github.com/digitalocean/godo v1.171.0 // indirect
 	github.com/emicklei/go-restful/v3 v3.12.2 // indirect
 	github.com/fxamacker/cbor/v2 v2.8.0 // indirect
 	github.com/go-errors/errors v1.5.1 // indirect
