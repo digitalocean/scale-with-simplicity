@@ -84,13 +84,6 @@ resource "kubernetes_secret_v1" "grafana_admin" {
 }
 
 
-# This data source fetches the default values file for the kube-prometheus-stack Helm chart.
-# This allows us to use the official recommended base configuration from DigitalOcean's marketplace
-# and then apply our specific customizations on top of it.
-data "http" "kube_prometheus_stack_values" {
-  url = "https://raw.githubusercontent.com/digitalocean/marketplace-kubernetes/master/stacks/kube-prometheus-stack/values.yml"
-}
-
 # This resource deploys the kube-prometheus-stack, a comprehensive monitoring solution for Kubernetes.
 # It bundles Prometheus for metrics collection, Grafana for visualization, and Alertmanager for alerting.
 # We are using the fetched values file as a base and then overriding some settings, such as disabling
