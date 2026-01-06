@@ -2,7 +2,21 @@
 
 Reusable Terraform modules are located in the `modules/` directory. Reference Architectures in this repository use these modules to implement common infrastructure patterns.
 
-See each module's README for detailed usage instructions.
+## How to Use These Modules
+
+These modules are **reference implementations** intended to be copied into your own Terraform project. They are not versioned published modules.
+
+**To use a module:**
+1. Copy the module directory (e.g., `modules/glb-stack/`) into your project
+2. Reference it with a relative path in your Terraform configuration
+3. Customize as needed for your requirements
+
+**Why copy instead of referencing from GitHub?**
+- **No version pinning** - Changes to this repository could unexpectedly affect your infrastructure on the next `terraform apply`
+- **Large repository** - Referencing from GitHub clones the entire repository including all reference architectures, images, and test files
+- **Reference implementations** - These modules are maintained as working examples, not as stable published APIs
+
+See each module's README for detailed configuration options.
 
 ## Available Modules
 
@@ -13,9 +27,9 @@ See each module's README for detailed usage instructions.
 | multi-region-vpc | Creates two or more VPCs in a fully-meshed peering configuration | [modules/multi-region-vpc](./modules/multi-region-vpc) |
 | partner-network-connect-aws | Connects DO VPCs with AWS VPC using Partner Network Connect via Megaport | [modules/partner-network-connect-aws](./modules/partner-network-connect-aws) |
 
-## Usage
+## Usage Within This Repository
 
-Reference modules using relative paths from your Terraform configuration:
+Reference Architectures in this repository reference modules using relative paths:
 
 ```hcl
 module "multi_region_vpc" {
@@ -37,8 +51,3 @@ make lint        # Run terraform validate, fmt, tflint
 make test-unit   # Run unit tests
 ```
 
-## Deprecated
-
-The following external module repositories have been deprecated and consolidated into this repository:
-
-- `terraform-digitalocean-droplet-internet-gateway` - Replaced by the [nat-gateway](./reference-architectures/nat-gateway) reference architecture
