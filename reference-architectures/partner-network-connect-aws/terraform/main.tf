@@ -84,11 +84,8 @@ provider "megaport" {
 #   * BGP peering configuration between the DO and AWS routers (IP addresses, authentication, ASN)
 #   * Connectivity to AWS's Virtual Private Gateway (VGW) using your supplied VGW ID
 #   * Tagging, diversity zone selection, and support for high availability
-#
-# See the Partner Network Connect module README:
-# https://github.com/digitalocean/terraform-digitalocean-partner-network-connect-aws
 module "pnc_red" {
-  source                     = "github.com/digitalocean/terraform-digitalocean-partner-network-connect-aws?ref=v1.0.0"
+  source                     = "../../../modules/partner-network-connect-aws"
   name_prefix                = var.name_prefix
   do_region                  = substr(var.do_region, 0, 3) # Use short region code like nyc
   mp_contract_term_months    = var.mp_contract_term_months
@@ -108,11 +105,9 @@ module "pnc_red" {
 # Optional High Availability Megaport connection (Blue)
 # Creates a redundant Virtual Cross Connect (VXC) in a different Megaport diversity zone.
 # This module call is nearly identical to pnc_red but includes a `parent_uuid` to link HA circuits.
-# See README:
-# https://github.com/digitalocean/terraform-digitalocean-partner-network-connect-aws
 module "pnc_blue" {
   count                      = var.ha_enabled ? 1 : 0
-  source                     = "github.com/digitalocean/terraform-digitalocean-partner-network-connect-aws?ref=v1.0.0"
+  source                     = "../../../modules/partner-network-connect-aws"
   name_prefix                = var.name_prefix
   do_region                  = substr(var.do_region, 0, 3)
   mp_contract_term_months    = var.mp_contract_term_months

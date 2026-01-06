@@ -1,0 +1,51 @@
+#cloud-config
+
+package_update: true
+package_upgrade: true
+package_reboot_if_required: true
+
+packages:
+  - iptables-persistent
+  - strongswan
+  - ifupdown
+  - curl
+
+write_files:
+  - path: /etc/ipsec.d/vpn.conf
+    content: |
+      conn Tunnel1
+              auto=start
+              left=%defaultroute
+              leftid=${do_vpn_public_ip}
+              right=${remote_vpn_public_ip}
+              type=tunnel
+              leftauth=psk
+              rightauth=psk
+              keyexchange=ikev1
+              ike=aes128-sha1-modp1024
+              ikelifetime=8h
+              esp=aes128-sha1-modp1024
+              lifetime=1h
+              keyingtries=%forever
+              leftsubnet=0.0.0.0/0
+              rightsubnet=0.0.0.0/0
+              dpddelay=10s
+              dpdtimeout=30s
+              dpdaction=restart
+              mark=100
+
+  - path: /etc/ipsec.secrets
+    content: |
+      ${do_vpn_public_ip} ${remote_vpn_public_ip} : PSK "${vpn_psk}"
+
+  - path: /root/setup-vpn.sh
+    permissions: '0755'
+    content: |
+${setup_vpn_script}
+
+runcmd:
+  - curl -L https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -o /usr/local/bin/yq && chmod +x /usr/local/bin/yq
+  - /root/setup-vpn.sh "${do_vpn_public_ip}" "${do_vpn_tunnel_ip}/${vpn_tunnel_cidr}" "${remote_vpn_public_ip}" "${remote_vpn_tunnel_ip}/${vpn_tunnel_cidr}" "${remote_vpn_cidr}"
+  # Ensure networking is up and running
+  - /var/lib/cloud/scripts/peering.sh
+  - systemctl restart strongswan-starter.service

@@ -18,7 +18,7 @@ Before you add or deploy any Reference Architecture (RA), ensure you have the fo
 
 A **Reference Architecture (RA)** is a curated, end-to-end deployment blueprint that demonstrates how to assemble production‑grade components into a complete solution on DigitalOcean. Each RA:
 
-* **Orchestrates Reusable Modules**: Relies on purpose‑built Terraform modules from our **Terraform Module Library** (see [TERRAFORM-MODULE-LIBRARY.md](./TERRAFORM-MODULE-LIBRARY.md)) for common services (VPC, Load Balancers, Managed Databases, etc.).
+* **Orchestrates Reusable Modules**: Relies on purpose‑built Terraform modules from the `modules/` directory (see [TERRAFORM-MODULE-LIBRARY.md](./TERRAFORM-MODULE-LIBRARY.md)) for common services (VPC, Load Balancers, Managed Databases, etc.).
 * **Adds Composition Logic**: Encapsulates higher‑level wiring, parameter choices, and orchestration that guide a user through deploying a full solution.
 * **Includes Diagrams & Documentation**: Provides a visual overview (`<ra-slug>.png`) and step‑by‑step instructions (`README.md`) so Solutions Architects and end users understand the design.
 * **Ships Automated Tests**: Carries unit and integration tests (via Terratest) to verify both plan outputs and full apply/destroy cycles, ensuring ongoing reliability.
@@ -36,6 +36,56 @@ By contrast, do **not** create a module if you only need to define a handful of 
 When in doubt, ask: *“Will this code be used by multiple architectures or represent a distinct orchestration pattern?”* If yes then create a module otherwise, keep it in the RA’s Terraform files.
 
 This guideline helps ensure our module library remains focused on widely applicable patterns, while RAs retain flexibility to implement one‑off or highly tailored resources without unnecessary abstraction.
+
+## Contributing to Modules
+
+Reusable Terraform modules are located in the `modules/` directory. When modifying or adding modules:
+
+### Module Structure
+
+Each module follows this structure:
+
+```
+modules/<module-name>/
+├── main.tf           # Core module logic
+├── variables.tf      # Input variables
+├── outputs.tf        # Module outputs
+├── terraform.tf      # Provider requirements
+├── README.md         # Usage documentation
+├── Makefile          # Lint and test targets
+└── test/
+    ├── go.mod        # Test dependencies
+    ├── go.sum
+    └── *_test.go     # Unit tests
+```
+
+### Running Module Tests
+
+```bash
+cd modules/<module-name>
+make lint        # Run terraform validate, fmt, tflint
+make test-unit   # Run unit tests
+```
+
+### Updating Modules
+
+When updating a module:
+1. Make changes to the module code
+2. Run `make lint` and `make test-unit` in the module directory
+3. Test affected reference architectures that use the module
+4. Update the module's README.md if inputs/outputs change
+
+### Referencing Modules from RAs
+
+Reference modules using relative paths from your Terraform configuration:
+
+```hcl
+module "multi_region_vpc" {
+  source      = "../../../modules/multi-region-vpc"
+  name_prefix = var.name_prefix
+  vpcs        = var.vpcs
+}
+```
 
 ## Adding a Reference Architecture
 
@@ -73,7 +123,7 @@ test-integration:
 ```
 
 5. **Update top-level** `README.md` to include your new RA in the index.
-6. **Add GitHub workflow files** under `.github/workflows/` to run your RA’s unit and integration tests. See the **Testing and Validation** section for more details.
+6. **Add integration test workflow** under `.github/workflows/<ra-slug>-integration-test.yaml`. PR checks run automatically for all modules and RAs. See the **CI Integration** section for details.
 7. **Push branch** and open a Pull Request. Ensure CI checks pass before requesting review.
 
 ### **Terraform Files and RA Layout**
@@ -101,7 +151,7 @@ Your Reference Architecture (RA) should adhere to the following directory and fi
 
 * Feel free to copy files from other RAs, but be sure to replace/update anything related with the original RA.
 * Place any RA-specific Terraform resources (e.g., inline Droplets, certificates) directly in `main.tf` alongside module calls.
-* Reference reusable modules by HTTP URLs to their GitHub repository.
+* Reference reusable modules using relative paths (e.g., `source = "../../../modules/multi-region-vpc"`).
 * Ensure `variables.tf` only declares inputs required by your RA, and that `outputs.tf` exposes critical values for downstream tests or documentation.
 * Keep the Makefile targets aligned with the folder layout so contributors can run `make lint`, `make test-unit`, and `make test-integration` without modification.
 
@@ -288,31 +338,15 @@ The `CidrAssigner` struct manages the allocation of CIDR blocks for VPCs and Kub
 
 #### **CI Integration**
 
-Each RA must define two GitHub Actions workflows under `.github/workflows/`:
+##### PR Checks (Automatic)
 
-1. **PR Check Workflow to Run Unit Tests** (`<ra-slug>-pr-check.yaml`)
+**No workflow file is needed for PR checks.** A single dynamic workflow (`.github/workflows/pr-check.yaml`) automatically detects and tests any changed modules or reference architectures. When you add a new RA or module with a standard Makefile containing `lint` and `test-unit` targets, PR checks will run automatically.
 
-```
-name: <ra-slug> PR Check
-on:
-  pull_request:
-    paths:
-      - 'reference-architectures/<ra-slug>/**/*.tf'
-      - 'reference-architectures/<ra-slug>/test/**/*'
+##### Integration Tests (Per-RA Workflow Required)
 
-jobs:
-  call-common:
-    uses: ./.github/workflows/workflow-terraform-pr-check.yaml
-    with:
-      module_path: reference-architectures/<ra-slug>
-    secrets:
-      # AWS Creds only needed if RA creates resources or access data from AWS
-      AWS_ACCESS_KEY_ID: ${{ secrets.SOLUTIONS_AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.SOLUTIONS_AWS_SECRET_ACCESS_KEY }}
-      DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.TEST_DIGITALOCEAN_ACCESS_TOKEN }}
-```
+Each RA must define an integration test workflow under `.github/workflows/`:
 
-2. **Integration Test Workflow** (`<ra-slug>-integration-test.yaml`)
+**Integration Test Workflow** (`<ra-slug>-integration-test.yaml`)
 
 ```
 name: <ra-slug> Apply-Destroy
@@ -334,7 +368,4 @@ jobs:
       DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.TEST_DIGITALOCEAN_ACCESS_TOKEN }}
 ```
 
-Both of these workflows invoke **reusable workflow templates** located in `.github/workflows/*`:
-
-* **`workflow-terraform-pr-check.yaml`** (PR checks)
-* **`workflow-terraform-integration-test.yaml`** (integration tests)
+This workflow invokes the **reusable workflow template** `workflow-terraform-integration-test.yaml`.

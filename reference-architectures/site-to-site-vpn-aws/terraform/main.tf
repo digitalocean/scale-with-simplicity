@@ -31,10 +31,8 @@ resource "digitalocean_reserved_ip" "vpn_gateway" {
 }
 
 # Launch a VPN gateway droplet and configure IPsec
-# This uses the terraform-digitalocean-ipsec-gateway module:
-# https://github.com/digitalocean/terraform-digitalocean-ipsec-gateway
 module "do_vpn_droplet" {
-  source               = "github.com/digitalocean/terraform-digitalocean-ipsec-gateway?ref=v1.1.0"
+  source               = "../../../modules/ipsec-gateway"
   name                 = "${var.name_prefix}-vgw"
   size                 = var.droplet_size
   region               = var.do_region

@@ -12,17 +12,18 @@ import (
 func TestPlan(t *testing.T) {
 	t.Parallel()
 
-	// Copy code to temp dir and init
-	testDir := test_structure.CopyTerraformFolderToTemp(t, "../..", "./terraform")
+	// Copy from repo root to preserve relative module paths (../../../modules)
+	testDir := test_structure.CopyTerraformFolderToTemp(t, "../../../..", ".")
+	terraformDir := filepath.Join(testDir, "reference-architectures/site-to-site-vpn-aws/terraform")
 	// Copy test.tfvars into temp dir
-	err := files.CopyFile("../test.tfvars", filepath.Join(testDir, "test.tfvars"))
+	err := files.CopyFile("../test.tfvars", filepath.Join(terraformDir, "test.tfvars"))
 	if err != nil {
 		t.Fatalf("Failed to copy tfvars file: %v", err)
 	}
 
 	// Configure Terraform options with inline override
 	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-		TerraformDir: testDir,
+		TerraformDir: terraformDir,
 		MixedVars:    []terraform.Var{terraform.VarFile("test.tfvars")},
 		NoColor:      true,
 		PlanFilePath: "plan.out",
