@@ -114,7 +114,7 @@ kubectl describe route default-egress-via-nat
 | `doks_node_count`     | Number of nodes in the DOKS cluster                                                              | `number`       | `1`     | no       |
 | `ssh_key_ids`         | List of SSH key IDs or fingerprints for droplet access                                           | `list(string)` | `[]`    | no       |
 
-**Note**: The cluster nodes, bastion droplet, and NAT-routed droplet automatically use the latest Ubuntu LTS image and the most cost-effective droplet size with 2 vCPUs and 4GB memory available in the selected region. Kubernetes version is pinned to 1.33.6-do.0 to avoid a Routing Agent bug in 1.34.x.
+**Note**: The cluster nodes, bastion droplet, and NAT-routed droplet automatically use the latest Ubuntu LTS image and the most cost-effective droplet size with 2 vCPUs and 4GB memory available in the selected region.
 
 ### Stack 2: Routing Configuration
 

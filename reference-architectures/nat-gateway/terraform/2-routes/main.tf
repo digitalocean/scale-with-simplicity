@@ -14,17 +14,9 @@ data "digitalocean_kubernetes_cluster" "cluster" {
 
 # Route CRD to override default route to NAT Gateway
 resource "kubernetes_manifest" "default_route_via_nat" {
-  manifest = {
-    apiVersion = "networking.doks.digitalocean.com/v1alpha1"
-    kind       = "Route"
-    metadata = {
-      name = "default-egress-via-nat"
-    }
-    spec = {
-      destinations = ["0.0.0.0/0"]
-      gateways     = [data.terraform_remote_state.infra.outputs.nat_gateway_gateway_ip]
-    }
-  }
+  manifest = yamldecode(templatefile("${path.module}/../../k8s/route.yaml", {
+    gateway_ip = data.terraform_remote_state.infra.outputs.nat_gateway_gateway_ip
+  }))
 
   depends_on = [
     # Ensure cluster is ready and Routing Agent is active
