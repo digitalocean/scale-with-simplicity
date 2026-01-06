@@ -61,7 +61,7 @@ resource "helm_release" "cert_manager" {
   name       = "cert-manager"
   repository = "https://charts.jetstack.io"
   chart      = "cert-manager"
-  namespace = "cluster-services"
+  namespace  = "cluster-services"
   set = [
     { name = "crds.enabled", value = true },
     { name = "config.apiVersion", value = "controller.config.cert-manager.io/v1alpha1" },

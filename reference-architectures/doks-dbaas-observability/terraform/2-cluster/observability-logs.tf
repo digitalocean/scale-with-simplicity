@@ -18,7 +18,7 @@ resource "kubernetes_secret_v1" "loki_logs_spaces_access_key" {
     namespace = kubernetes_namespace_v1.cluster_services.metadata[0].name
   }
   data = {
-    AWS_ACCESS_KEY_ID = digitalocean_spaces_key.loki_logs.access_key
+    AWS_ACCESS_KEY_ID     = digitalocean_spaces_key.loki_logs.access_key
     AWS_SECRET_ACCESS_KEY = digitalocean_spaces_key.loki_logs.secret_key
   }
   type = "Opaque"
@@ -27,8 +27,8 @@ resource "kubernetes_secret_v1" "loki_logs_spaces_access_key" {
 resource "helm_release" "loki" {
   name       = "loki"
   repository = "https://grafana.github.io/helm-charts"
-  chart = "loki"
-  namespace = kubernetes_namespace_v1.cluster_services.metadata[0].name
+  chart      = "loki"
+  namespace  = kubernetes_namespace_v1.cluster_services.metadata[0].name
   values = [
     yamlencode({
       # SimpleScalable strikes a balance between deploying in monolithic mode or deploying each component as a separate microservice.
@@ -50,11 +50,11 @@ resource "helm_release" "loki" {
         auth_enabled = false
 
         limits_config = {
-          retention_period              = "168h"
+          retention_period = "168h"
         }
 
         compactor = {
-          retention_enabled = true
+          retention_enabled    = true
           delete_request_store = "s3"
         }
 
@@ -64,11 +64,11 @@ resource "helm_release" "loki" {
             ruler  = data.digitalocean_spaces_bucket.loki_logs.name
           }
           s3 = {
-            endpoint           = "https://${data.digitalocean_spaces_bucket.loki_logs.region}.digitaloceanspaces.com"
-            region             = "us-east-1"
-            s3ForcePathStyle   = true
-            signatureVersion   = "v4"
-            disable_dualstack  = true
+            endpoint          = "https://${data.digitalocean_spaces_bucket.loki_logs.region}.digitaloceanspaces.com"
+            region            = "us-east-1"
+            s3ForcePathStyle  = true
+            signatureVersion  = "v4"
+            disable_dualstack = true
           }
         }
 
@@ -107,10 +107,10 @@ resource "helm_release" "loki" {
 
 
 resource "helm_release" "alloy" {
-  name       = "alloy"
-  repository = "https://grafana.github.io/helm-charts"
-  chart      = "alloy"
-  namespace  = kubernetes_namespace_v1.cluster_services.metadata[0].name
+  name          = "alloy"
+  repository    = "https://grafana.github.io/helm-charts"
+  chart         = "alloy"
+  namespace     = kubernetes_namespace_v1.cluster_services.metadata[0].name
   recreate_pods = true
 
   values = [
@@ -270,7 +270,7 @@ resource "helm_release" "alloy" {
       }
     })
   ]
-  depends_on = [kubernetes_manifest.syslog_server_certificate]
+  depends_on = [kubernetes_secret_v1.alloy_syslog_tls]
 }
 
 # LoadBalancer Service for Log Sink - exposes Alloy's syslog listener to external rsyslog sources
@@ -279,8 +279,8 @@ resource "kubernetes_service_v1" "alloy_syslog_nlb" {
     name      = "alloy-syslog-nlb"
     namespace = kubernetes_namespace_v1.cluster_services.metadata[0].name
     annotations = {
-      "external-dns.alpha.kubernetes.io/hostname" = var.log_sink_fqdn
-      "service.beta.kubernetes.io/do-loadbalancer-name" = "${var.name_prefix}-syslog-nlb"
+      "external-dns.alpha.kubernetes.io/hostname"          = var.log_sink_fqdn
+      "service.beta.kubernetes.io/do-loadbalancer-name"    = "${var.name_prefix}-syslog-nlb"
       "service.beta.kubernetes.io/do-loadbalancer-network" = "INTERNAL"
     }
   }
@@ -296,94 +296,118 @@ resource "kubernetes_service_v1" "alloy_syslog_nlb" {
     }
 
     selector = {
-      "app.kubernetes.io/name" = "alloy"
+      "app.kubernetes.io/name"     = "alloy"
       "app.kubernetes.io/instance" = "alloy"
     }
   }
 }
 
-# Self-signed ClusterIssuer for creating a root CA
-resource "kubernetes_manifest" "syslog_ca_issuer" {
-  manifest = {
-    apiVersion = "cert-manager.io/v1"
-    kind       = "ClusterIssuer"
-    metadata = {
-      name = "syslog-ca-issuer"
-    }
-    spec = {
-      selfSigned = {}
-    }
-  }
+# --- TLS Certificate Generation for Syslog ---
+# Using Terraform TLS provider instead of cert-manager for the CA.
+# This allows the CA certificate to be used by the logsink resource.
+
+# Generate CA private key
+resource "tls_private_key" "syslog_ca" {
+  algorithm   = "ECDSA"
+  ecdsa_curve = "P256"
 }
 
-# Root CA Certificate
-resource "kubernetes_manifest" "syslog_ca_certificate" {
-  manifest = {
-    apiVersion = "cert-manager.io/v1"
-    kind       = "Certificate"
-    metadata = {
-      name      = "syslog-ca"
-      namespace = kubernetes_namespace_v1.cluster_services.metadata[0].name
-    }
-    spec = {
-      isCA       = true
-      commonName = "Syslog Log Sink CA"
-      secretName = "syslog-ca-secret"
-      privateKey = {
-        algorithm = "ECDSA"
-        size      = 256
-      }
-      issuerRef = {
-        name  = kubernetes_manifest.syslog_ca_issuer.manifest.metadata.name
-        kind  = "ClusterIssuer"
-        group = "cert-manager.io"
-      }
-    }
+# Generate self-signed CA certificate
+resource "tls_self_signed_cert" "syslog_ca" {
+  private_key_pem = tls_private_key.syslog_ca.private_key_pem
+
+  subject {
+    common_name  = "Syslog Log Sink CA"
+    organization = "DigitalOcean Reference Architecture"
   }
+
+  validity_period_hours = 87600 # 10 years
+  is_ca_certificate     = true
+
+  allowed_uses = [
+    "cert_signing",
+    "crl_signing",
+  ]
 }
 
-# CA ClusterIssuer using the generated CA
-resource "kubernetes_manifest" "syslog_ca_cluster_issuer" {
-  manifest = {
-    apiVersion = "cert-manager.io/v1"
-    kind       = "ClusterIssuer"
-    metadata = {
-      name = "syslog-ca-cluster-issuer"
-    }
-    spec = {
-      ca = {
-        secretName = kubernetes_manifest.syslog_ca_certificate.manifest.spec.secretName
-      }
-    }
-  }
+# Generate server private key
+resource "tls_private_key" "syslog_server" {
+  algorithm   = "ECDSA"
+  ecdsa_curve = "P256"
 }
 
-# Server Certificate for Alloy syslog listener
-resource "kubernetes_manifest" "syslog_server_certificate" {
-  manifest = {
-    apiVersion = "cert-manager.io/v1"
-    kind       = "Certificate"
-    metadata = {
-      name      = "syslog-server-cert"
-      namespace = kubernetes_namespace_v1.cluster_services.metadata[0].name
-    }
-    spec = {
-      secretName = "alloy-syslog-tls"
-      issuerRef = {
-        name  = kubernetes_manifest.syslog_ca_cluster_issuer.manifest.metadata.name
-        kind  = "ClusterIssuer"
-        group = "cert-manager.io"
-      }
-      dnsNames = [
-        var.log_sink_fqdn
-      ]
-      privateKey = {
-        algorithm = "ECDSA"
-        size      = 256
-      }
-    }
+# Generate server certificate signing request
+resource "tls_cert_request" "syslog_server" {
+  private_key_pem = tls_private_key.syslog_server.private_key_pem
+
+  subject {
+    common_name  = var.log_sink_fqdn
+    organization = "DigitalOcean Reference Architecture"
   }
+
+  dns_names = [var.log_sink_fqdn]
 }
 
+# Sign server certificate with CA
+resource "tls_locally_signed_cert" "syslog_server" {
+  cert_request_pem   = tls_cert_request.syslog_server.cert_request_pem
+  ca_private_key_pem = tls_private_key.syslog_ca.private_key_pem
+  ca_cert_pem        = tls_self_signed_cert.syslog_ca.cert_pem
 
+  validity_period_hours = 8760 # 1 year
 
+  allowed_uses = [
+    "key_encipherment",
+    "digital_signature",
+    "server_auth",
+  ]
+}
+
+# Store server certificate in Kubernetes secret (used by Alloy)
+resource "kubernetes_secret_v1" "alloy_syslog_tls" {
+  metadata {
+    name      = "alloy-syslog-tls"
+    namespace = kubernetes_namespace_v1.cluster_services.metadata[0].name
+  }
+  data = {
+    "tls.crt" = tls_locally_signed_cert.syslog_server.cert_pem
+    "tls.key" = tls_private_key.syslog_server.private_key_pem
+  }
+  type = "kubernetes.io/tls"
+}
+
+# --- Database Log Sink Configuration ---
+# Forwards logs from managed databases to Loki via rsyslog over TLS
+
+# Data sources for databases created in stack 1
+data "digitalocean_database_cluster" "adservice" {
+  name = "${var.name_prefix}-adservice-pg"
+}
+
+data "digitalocean_database_cluster" "cartservice" {
+  name = "${var.name_prefix}-cartservice-valkey"
+}
+
+# Rsyslog logsink for AdService PostgreSQL database
+# Note: Sink names have a ~24 character limit
+resource "digitalocean_database_logsink_rsyslog" "adservice" {
+  cluster_id = data.digitalocean_database_cluster.adservice.id
+  name       = "loki-adservice-pg"
+  server     = var.log_sink_fqdn
+  port       = 6514
+  tls        = true
+  format     = "rfc5424"
+  ca_cert    = tls_self_signed_cert.syslog_ca.cert_pem
+}
+
+# Rsyslog logsink for CartService Valkey database
+# Note: Sink names have a ~24 character limit
+resource "digitalocean_database_logsink_rsyslog" "cartservice" {
+  cluster_id = data.digitalocean_database_cluster.cartservice.id
+  name       = "loki-cartservice-valkey"
+  server     = var.log_sink_fqdn
+  port       = 6514
+  tls        = true
+  format     = "rfc5424"
+  ca_cert    = tls_self_signed_cert.syslog_ca.cert_pem
+}

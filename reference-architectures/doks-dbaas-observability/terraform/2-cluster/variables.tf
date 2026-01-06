@@ -5,7 +5,7 @@ variable "name_prefix" {
 
 variable "grafana_password" {
   description = "Password used for Grafana UI"
-  default = "do-demo"
+  default     = "do-demo"
 }
 
 variable "digitalocean_access_token" {
