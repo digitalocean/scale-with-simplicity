@@ -1,6 +1,6 @@
 locals {
   tags = [
-    "single-doks-cluster",
+    "doks-dbaas-observability",
     var.name_prefix
   ]
 }
@@ -53,10 +53,6 @@ resource "digitalocean_kubernetes_cluster" "primary_cluster" {
   service_subnet                   = var.doks_service_subnet
   destroy_all_associated_resources = true
   ha                               = var.doks_control_plane_ha
-  # Disabled for now due to a bug with routing to NLB for a Gateway from within the cluster.
-  # routing_agent {
-  #   enabled = true
-  # }
   tags = local.tags
   node_pool {
     name       = "${var.name_prefix}-${data.digitalocean_sizes.slug_2vcpu_4gb.sizes[0].slug}"
