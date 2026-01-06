@@ -1,43 +1,13 @@
 # cert-manager Issuer for Automatic TLS Certificate Management
 #
 # This Issuer resource configures cert-manager to automatically obtain and renew
-# TLS certificates from Let's Encrypt using the ACME HTTP-01 challenge method.
+# TLS certificates from Let's Encrypt using the ACME DNS-01 challenge method.
 # cert-manager was installed as part of the cluster services in stack 2-cluster.
 #
-# The HTTP-01 challenge works by having Let's Encrypt request a specific file
-# from your domain over HTTP. cert-manager automatically creates temporary
-# HTTPRoutes to handle these challenges through the Gateway.
+# The DNS-01 challenge works by having cert-manager create a TXT record in your
+# domain's DNS to prove ownership.
 resource "kubernetes_manifest" "letsencrypt_dns01_issuer" {
-  manifest = {
-    apiVersion = "cert-manager.io/v1"
-    kind       = "ClusterIssuer"
-    metadata = {
-      name      = "demo-letsencrypt-dns01"
-    }
-    spec = {
-      acme = {
-        server = "https://acme-v02.api.letsencrypt.org/directory"
-        # Secret where the ACME account private key will be stored
-        privateKeySecretRef = {
-          name = "letsencrypt-account-key"
-        }
-        # Challenge solvers define how cert-manager will prove domain ownership
-        solvers = [
-          {
-            # HTTP-01 challenge solver configuration
-            dns01 = {
-              digitalocean: {
-                tokenSecretRef: {
-                  name: "digitalocean-access-token"
-                  key: "token"
-                }
-              }
-            }
-          }
-        ]
-      }
-    }
-  }
+  manifest = yamldecode(file("${path.module}/../../k8s/environment/clusterissuer-letsencrypt.yaml"))
 }
 
 
@@ -59,63 +29,11 @@ resource "kubernetes_manifest" "letsencrypt_dns01_issuer" {
 #
 # This Gateway uses Cilium as the gateway implementation, which is installed by default in DOKS clusters.
 resource "kubernetes_manifest" "cilium_gateway_http" {
-  manifest = {
-    apiVersion = "gateway.networking.k8s.io/v1"
-    kind       = "Gateway"
-    metadata = {
-      name      = "demo-http"
-      namespace = kubernetes_namespace_v1.demo.metadata[0].name
-      annotations = {
-        # This annotation tells cert-manager which Issuer to use for automatic
-        # TLS certificate provisioning. The issuer is defined below in this file.
-        "cert-manager.io/cluster-issuer": "demo-letsencrypt-dns01"
-      }
-    }
-    spec = {
-      # Specifies which Gateway Class to use. In DOKS with Cilium, we use "cilium"
-      # which was installed by default when the cluster was created.
-      gatewayClassName = "cilium"
-
-      # Infrastructure configuration allows us to customize the underlying Service
-      # that the Gateway creates. These annotations are applied to the Service
-      # and picked up by the DigitalOcean Cloud Controller Manager (CCM).
-      infrastructure = {
-        annotations = {
-          # This annotation tells the DigitalOcean CCM to create a load balancer
-          # with a specific name, making it easier to identify in the DO console.
-          "service.beta.kubernetes.io/do-loadbalancer-name" = var.name_prefix
-        }
-      }
-
-      # Listeners define the network endpoints that this Gateway exposes.
-      # Each listener can handle different protocols, ports, and hostnames.
-      listeners = [
-        {
-          # HTTPS listener for port 443 - handles secure traffic
-          name     = "https"
-          protocol = "HTTPS"
-          port     = 443
-          hostname = var.fqdn
-          tls = {
-            # Reference to the TLS certificate Secret that cert-manager will create
-            certificateRefs = [
-              {
-                kind = "Secret"
-                name = "tls-demo-frontend"
-              }
-            ]
-          }
-        },
-        {
-          # HTTP listener for port 80 used redirecting traffic to HTTPS
-          name     = "http"
-          protocol = "HTTP"
-          port     = 80
-          hostname = var.fqdn
-        }
-      ]
-    }
-  }
+  manifest = yamldecode(templatefile("${path.module}/../../k8s/environment/gateway-cilium.yaml", {
+    namespace   = kubernetes_namespace_v1.demo.metadata[0].name
+    name_prefix = var.name_prefix
+    fqdn        = var.fqdn
+  }))
 }
 
 # HTTPRoute Resource - Application Traffic Routing Configuration
@@ -131,113 +49,19 @@ resource "kubernetes_manifest" "cilium_gateway_http" {
 # managed by the same team, providing full control over the ingress configuration
 # without dependencies on shared infrastructure resources.
 resource "kubernetes_manifest" "httproute_frontend_https" {
-  manifest = {
-    apiVersion = "gateway.networking.k8s.io/v1"
-    kind       = "HTTPRoute"
-    metadata = {
-      name      = "demo-frontend-https"
-      namespace = kubernetes_namespace_v1.demo.metadata[0].name
-    }
-    spec = {
-      # parentRefs define which Gateway listeners this HTTPRoute binds to
-      parentRefs = [
-        {
-          # Reference to the Gateway defined above
-          name        = kubernetes_manifest.cilium_gateway_http.manifest.metadata.name
-          namespace   = kubernetes_namespace_v1.demo.metadata[0].name
-          # Bind to the HTTPS listener (port 443) - used for secure application traffic
-          sectionName = "https"
-        }
-      ]
-
-      # Only accept traffic for this specific hostname
-      # This works with the hostname restriction on the HTTPS listener
-      hostnames = [var.fqdn]
-
-      # Routing rules define how to match incoming requests and where to send them
-      rules = [
-        {
-          # Match conditions - when should this rule apply?
-          matches = [
-            {
-              path = {
-                # PathPrefix matching means any path starting with "/" (i.e., all paths)
-                # Other options include "Exact" and "RegularExpression"
-                type  = "PathPrefix"
-                value = "/"
-              }
-            }
-          ]
-
-          # Backend references - where should matching traffic be sent?
-          backendRefs = [
-            {
-              # Send traffic to the "frontend" Service on port 80
-              # This Service is created by the microservices-demo Helm chart below
-              name = "frontend"
-              port = 80
-            }
-          ]
-        }
-      ]
-    }
-  }
+  manifest = yamldecode(templatefile("${path.module}/../../k8s/environment/httproute-frontend.yaml", {
+    namespace = kubernetes_namespace_v1.demo.metadata[0].name
+    fqdn      = var.fqdn
+  }))
 }
 
 
+# HTTPRoute for HTTP to HTTPS redirect
 resource "kubernetes_manifest" "httproute_frontend_http_redirect" {
-  manifest = {
-    apiVersion = "gateway.networking.k8s.io/v1"
-    kind       = "HTTPRoute"
-    metadata = {
-      name      = "demo-frontend-http-redirect"
-      namespace = kubernetes_namespace_v1.demo.metadata[0].name
-    }
-    spec = {
-      # parentRefs define which Gateway listeners this HTTPRoute binds to
-      parentRefs = [
-        {
-          # Reference to the Gateway defined above
-          name        = kubernetes_manifest.cilium_gateway_http.manifest.metadata.name
-          namespace   = kubernetes_namespace_v1.demo.metadata[0].name
-          # Bind to the HTTPS listener (port 443) - used for secure application traffic
-          sectionName = "http"
-        }
-      ]
-
-      # Only accept traffic for this specific hostname
-      # This works with the hostname restriction on the HTTPS listener
-      hostnames = [var.fqdn]
-
-      # Routing rules define how to match incoming requests and where to send them
-      rules = [
-        {
-          # Match conditions - when should this rule apply?
-          matches = [
-            {
-              path = {
-                # PathPrefix matching means any path starting with "/" (i.e., all paths)
-                # Other options include "Exact" and "RegularExpression"
-                type  = "PathPrefix"
-                value = "/"
-              }
-            }
-          ]
-
-          filters = [
-            {
-              type = "RequestRedirect"
-              requestRedirect = {
-                scheme = "https"
-                port = "443"
-                statusCode = "301"
-              }
-            }
-          ]
-        }
-      ]
-    }
-  }
+  manifest = yamldecode(templatefile("${path.module}/../../k8s/environment/httproute-http-redirect.yaml", {
+    namespace = kubernetes_namespace_v1.demo.metadata[0].name
+    fqdn      = var.fqdn
+  }))
 }
 
 
@@ -251,8 +75,8 @@ resource "kubernetes_manifest" "httproute_frontend_http_redirect" {
 # services (frontend, cart, catalog, etc.) and demonstrates how they work together
 # in a DOKS environment with the Gateway API for ingress.
 resource "helm_release" "microservices_demo" {
-  chart = "oci://ghcr.io/do-solutions/microservices-demo"
-  name  = "demo"
+  chart     = "oci://ghcr.io/do-solutions/microservices-demo"
+  name      = "demo"
   namespace = kubernetes_namespace_v1.demo.metadata[0].name
 
   # The `set` block is used to override default values in the Helm chart.

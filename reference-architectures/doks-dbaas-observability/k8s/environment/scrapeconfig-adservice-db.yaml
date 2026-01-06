@@ -1,0 +1,29 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: adservice-database
+  namespace: ${namespace}
+  labels:
+    # Label used to discover ScrapeConfigs matching the name of helm_release
+    release: kube-prometheus-stack
+spec:
+  jobName: adservice-database
+  scheme: HTTPS
+  tlsConfig:
+    ca:
+      secret:
+        name: adservice-database
+        key: ca-cert
+  metricsPath: /metrics
+  scrapeInterval: 30s
+  staticConfigs:
+    - targets:
+        - ${metrics_endpoint}
+  # References to the adservice-database secret for authentication
+  basicAuth:
+    username:
+      name: adservice-database
+      key: metrics-username
+    password:
+      name: adservice-database
+      key: metrics-password

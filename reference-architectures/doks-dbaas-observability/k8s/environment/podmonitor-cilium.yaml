@@ -1,0 +1,21 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: cilium
+  namespace: cluster-services
+  labels:
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      k8s-app: cilium
+  namespaceSelector:
+    matchNames:
+      - kube-system
+  podMetricsEndpoints:
+    - port: prometheus
+      interval: 30s
+      path: /metrics
+    - port: envoy-metrics
+      interval: 30s
+      path: /metrics

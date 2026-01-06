@@ -1,0 +1,40 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: demo-http
+  namespace: ${namespace}
+  annotations:
+    # This annotation tells cert-manager which Issuer to use for automatic
+    # TLS certificate provisioning.
+    cert-manager.io/cluster-issuer: demo-letsencrypt-dns01
+spec:
+  # Specifies which Gateway Class to use. In DOKS with Cilium, we use "cilium"
+  # which was installed by default when the cluster was created.
+  gatewayClassName: cilium
+
+  # Infrastructure configuration allows us to customize the underlying Service
+  # that the Gateway creates. These annotations are applied to the Service
+  # and picked up by the DigitalOcean Cloud Controller Manager (CCM).
+  infrastructure:
+    annotations:
+      # This annotation tells the DigitalOcean CCM to create a load balancer
+      # with a specific name, making it easier to identify in the DO console.
+      service.beta.kubernetes.io/do-loadbalancer-name: ${name_prefix}
+
+  # Listeners define the network endpoints that this Gateway exposes.
+  listeners:
+    - # HTTPS listener for port 443 - handles secure traffic
+      name: https
+      protocol: HTTPS
+      port: 443
+      hostname: ${fqdn}
+      tls:
+        # Reference to the TLS certificate Secret that cert-manager will create
+        certificateRefs:
+          - kind: Secret
+            name: tls-demo-frontend
+    - # HTTP listener for port 80 used for redirecting traffic to HTTPS
+      name: http
+      protocol: HTTP
+      port: 80
+      hostname: ${fqdn}

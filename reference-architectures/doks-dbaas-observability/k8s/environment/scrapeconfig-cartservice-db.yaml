@@ -1,0 +1,29 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: cartservice-database
+  namespace: ${namespace}
+  labels:
+    # Label used to discover ScrapeConfigs matching the name of helm_release
+    release: kube-prometheus-stack
+spec:
+  jobName: cartservice-database
+  scheme: HTTPS
+  tlsConfig:
+    ca:
+      secret:
+        name: cartservice-database
+        key: ca-cert
+  metricsPath: /metrics
+  scrapeInterval: 30s
+  staticConfigs:
+    - targets:
+        - ${metrics_endpoint}
+  # References to the cartservice-database secret for authentication
+  basicAuth:
+    username:
+      name: cartservice-database
+      key: metrics-username
+    password:
+      name: cartservice-database
+      key: metrics-password

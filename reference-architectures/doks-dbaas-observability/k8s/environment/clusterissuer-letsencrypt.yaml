@@ -1,0 +1,18 @@
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: demo-letsencrypt-dns01
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    # Secret where the ACME account private key will be stored
+    privateKeySecretRef:
+      name: letsencrypt-account-key
+    # Challenge solvers define how cert-manager will prove domain ownership
+    solvers:
+      - # DNS-01 challenge solver configuration
+        dns01:
+          digitalocean:
+            tokenSecretRef:
+              name: digitalocean-access-token
+              key: token
