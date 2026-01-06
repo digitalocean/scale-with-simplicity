@@ -3,7 +3,7 @@ module github.com/digitalocean/scale-with-simplicity/reference-architectures/par
 go 1.24.2
 
 require (
-	github.com/digitalocean/godo v1.170.0
+	github.com/digitalocean/godo v1.171.0
 	github.com/digitalocean/scale-with-simplicity/test v0.0.0
 	github.com/gruntwork-io/terratest v0.50.0
 	github.com/stretchr/testify v1.10.0
