@@ -12,8 +12,8 @@ A Terraform composition that bootstraps a **multi-region, highly available web f
 
 ## How it fits together
 
-* The [terraform-digitalocean-multi-region-vpc](https://github.com/digitalocean/terraform-digitalocean-multi-region-vpc) submodule creates two or more VPCs in different regions and peers them in a full mesh so that internal traffic can flow region-to-region securely.
-* The [terraform-digitalocean-glb-stack](https://github.com/digitalocean/terraform-digitalocean-glb-stack) submodule consumes those VPCs and:
+* The [multi-region-vpc](../../modules/multi-region-vpc) module creates two or more VPCs in different regions and peers them in a full mesh so that internal traffic can flow region-to-region securely.
+* The [glb-stack](../../modules/glb-stack) module consumes those VPCs and:
 
     * Provisions one regional load balancer per region/VPC.
     * Exposes optional per-region DNS records for direct regional access.
@@ -49,11 +49,11 @@ A Terraform composition that bootstraps a **multi-region, highly available web f
 
 ## Submodules and Dependencies
 
-### `terraform-digitalocean-multi-region-vpc`
+### `multi-region-vpc`
 
 Creates two or more VPCs in distinct regions and peers them together in a full mesh so that private/internal traffic can flow between regions without traversing the public internet. This provides the underlying network fabric for the regional droplets and their load balancers.
 
-### `terraform-digitalocean-glb-stack`
+### `glb-stack`
 
 Orchestrates the regional and global load balancing tier:
 
@@ -93,6 +93,6 @@ vpcs = [
 
 ## Further reading
 
-* Multi-region VPC module README: [https://github.com/digitalocean/terraform-digitalocean-multi-region-vpc](https://github.com/digitalocean/terraform-digitalocean-multi-region-vpc)
-* GLB stack module README: [https://github.com/digitalocean/terraform-digitalocean-glb-stack](https://github.com/digitalocean/terraform-digitalocean-glb-stack)
+* Multi-region VPC module README: [modules/multi-region-vpc](../../modules/multi-region-vpc)
+* GLB stack module README: [modules/glb-stack](../../modules/glb-stack)
 * DigitalOcean Load Balancer documentation for deeper understanding of forwarding rules, healthchecks, and TLS behavior: [https://docs.digitalocean.com/products/networking/load-balancers/](https://docs.digitalocean.com/products/networking/load-balancers/)

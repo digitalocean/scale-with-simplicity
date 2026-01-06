@@ -1,4 +1,4 @@
-# terraform-digitalocean-partner-network-connect
+# partner-network-connect-aws
 
 A Terraform module to provision a [DigitalOcean Partner Network Connect](https://www.digitalocean.com/blog/partner-network-connect) between one or more DigitalOcean VPCs with an AWS VPC over Megaport, including:
 
@@ -18,6 +18,9 @@ A Terraform module to provision a [DigitalOcean Partner Network Connect](https:/
 
 ## Usage Example
 
+> **Note:** This is a reference implementation. Copy this module into your project and reference it locally.
+> See [Terraform Module Library](../../TERRAFORM-MODULE-LIBRARY.md) for guidance.
+
 ```hcl
 # Inject the Megaport provider in your root module
 provider "megaport" {
@@ -26,7 +29,7 @@ provider "megaport" {
 }
 
 module "pnc" {
-  source = "github.com/your-org/terraform-digitalocean-partner-network-connect"
+  source = "./modules/partner-network-connect-aws"  # Path after copying to your project
 
   name_prefix                = "test"
   do_region                  = "sfo"

@@ -1,6 +1,6 @@
 # End-to-End DO VPC to AWS VPC Connection with HA Support
 
-This Terraform module provisions a complete, highly available (HA) end-to-end connection between a DigitalOcean VPC and an AWS VPC using the `terraform-digitalocean-partner-network-connect-aws` child module.
+This Terraform module provisions a complete, highly available (HA) end-to-end connection between a DigitalOcean VPC and an AWS VPC using the `partner-network-connect-aws` module.
 
 ## Architecture Overview
 
@@ -19,8 +19,9 @@ This Terraform module provisions a complete, highly available (HA) end-to-end co
 
 ## Submodules Used
 
-### [terraform-digitalocean-partner-network-connect-aws](https://github.com/digitalocean/terraform-digitalocean-partner-network-connect-aws)
-This module provisions private connectivity between DigitalOcean and AWS using Megaport’s global network. It handles:
+### [partner-network-connect-aws](../../modules/partner-network-connect-aws)
+
+This module provisions private connectivity between DigitalOcean and AWS using Megaport's global network. It handles:
 
 - Provisioning a **Megaport Cloud Router (MCR)** in a chosen Megaport location
 - Creating a **Virtual Cross Connect (VXC)** between the MCR and AWS’s **Virtual Private Gateway (VGW)**
@@ -61,7 +62,7 @@ This module automates the creation of a VPN connection on AWS and associates it 
 | `aws_vpc_cidr`            | CIDR block for the AWS VPC                                                              | `string` | n/a     | yes      |
 | `aws_region_full_name`    | AWS Region name as shown in Megaport console (e.g. `US East (N. Virginia) (us-east-1)`) | `string` | n/a     | yes      |
 
-See the [README](https://github.com/digitalocean/terraform-digitalocean-partner-network-connect-aws/blob/main/README.md) for `terraform-digitalocean-partner-network-connect-aws` module for guidance on how to find the values for the `mp_do_location_red` and `mp_aws_location_red` inputs.
+See the [partner-network-connect-aws module README](../../modules/partner-network-connect-aws) for guidance on how to find the values for the `mp_do_location_red` and `mp_aws_location_red` inputs.
 
 ## Outputs
 

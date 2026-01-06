@@ -17,7 +17,8 @@ This repository provides a reference architecture and Terraform-based implementa
 
 ## Submodules Used
 
-### [terraform-digitalocean-ipsec-gateway](https://github.com/digitalocean/terraform-digitalocean-ipsec-gateway)
+### [ipsec-gateway](../../modules/ipsec-gateway)
+
 This module provisions a DigitalOcean Droplet as an IPSec VPN gateway with:
 - StrongSwan configuration
 - Cloud-init setup for tunnel IPs, remote public IP, PSK, and static routes

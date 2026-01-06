@@ -1,4 +1,4 @@
-# terraform-digitalocean-glb-stack
+# glb-stack
 
 A Terraform module that deploys:
 
@@ -8,9 +8,12 @@ A Terraform module that deploys:
 
 # Example
 
+> **Note:** This is a reference implementation. Copy this module into your project and reference it locally.
+> See [Terraform Module Library](../../TERRAFORM-MODULE-LIBRARY.md) for guidance.
+
 ```terraform
 module "glb_stack" {
-  source  = "github.com/digitalocean/terraform-digitalocean-glb-stack"
+  source = "./modules/glb-stack"  # Path after copying to your project
 
   name_prefix = "test"
 

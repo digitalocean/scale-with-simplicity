@@ -1,10 +1,15 @@
-# terraform-digitalocean-multi-region-vpc
+# multi-region-vpc
+
 This module creates two or more VPCs in a fully meshed peering configuration.
 
 # Example
+
+> **Note:** This is a reference implementation. Copy this module into your project and reference it locally.
+> See [Terraform Module Library](../../TERRAFORM-MODULE-LIBRARY.md) for guidance.
+
 ```terraform
 module "vpc" {
-  source      = "github.com/digitalocean/terraform-digitalocean-multi-region-vpc"
+  source      = "./modules/multi-region-vpc"  # Path after copying to your project
   name_prefix = "prod"
   vpcs = [
     {
