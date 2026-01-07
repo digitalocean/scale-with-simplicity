@@ -245,6 +245,11 @@ Navigate to **Dashboards** in the left menu to find:
 {job="database-logs"}
 ```
 
+**Database connection events:**
+```
+{job="database-logs"} |= "connection"
+```
+
 **Kubernetes events:**
 ```
 {job="kubernetes-events"}
