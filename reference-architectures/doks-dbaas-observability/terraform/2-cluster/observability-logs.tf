@@ -377,7 +377,10 @@ resource "kubernetes_secret_v1" "alloy_syslog_tls" {
 }
 
 # --- Database Log Sink Configuration ---
-# Forwards logs from managed databases to Loki via rsyslog over TLS
+# Forwards logs from managed databases to Loki via rsyslog over TLS.
+# These resources are in stack 2 (rather than stack 3 with database metrics)
+# because they depend on the TLS CA certificate created above, minimizing
+# cross-stack state dependencies.
 
 # Data sources for databases created in stack 1
 data "digitalocean_database_cluster" "adservice" {

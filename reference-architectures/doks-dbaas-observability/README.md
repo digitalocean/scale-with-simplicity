@@ -99,7 +99,7 @@ This stack installs the core observability platform and essential cluster servic
 | **kube-prometheus-stack** | Prometheus (5Gi storage, 7-day retention), Grafana with 5 pre-loaded dashboards, Alertmanager (2 replicas) |
 | **Loki** | Log aggregation in SimpleScalable mode with Spaces backend, 7-day retention, TSDB index |
 | **Alloy** | DaemonSet for container log collection, Kubernetes event collection, TLS syslog listener (port 6514) with internal LoadBalancer |
-| **cert-manager** | TLS certificate automation, Gateway API support, self-signed CA for syslog |
+| **cert-manager** | TLS certificate automation, Gateway API support |
 | **ExternalDNS** | Automatic DNS record management for Services and Gateway API resources |
 | **Metrics Server** | Enables HPA and resource-based metrics (2 replicas) |
 | **Database Log Sinks** | rsyslog sinks for PostgreSQL and Valkey logs (RFC5424 format, TLS-secured) |
