@@ -17,15 +17,22 @@ flowchart LR
         direction TB
 
         %% External traffic flow
-        Internet(("Internet")) --> LB["External NLB<br/>(Application)"]
         Internet --> DNS["DO DNS"]
-        LB --> Gateway
+        Internet(("Internet")) --> LB
+
 
         subgraph VPC["VPC (Private Network)"]
-            direction LR
+            direction TB
+            LB["External NLB<br/>(Application)"] --> Gateway
 
-            subgraph DOKS["DOKS Kubernetes Cluster (Cilium CNI)"]
-                direction TB
+            subgraph DOKS["DOKS Kubernetes Cluster"]
+                direction LR
+
+                subgraph Platform["Platform Services"]
+                    direction TB
+                    CertManager["cert-manager"]
+                    ExtDNS["ExternalDNS"]
+                end
 
                 subgraph App["Demo Application"]
                     direction TB
@@ -34,12 +41,6 @@ flowchart LR
                     AdService["AdService"]
                     CartService["CartService"]
                     LoadGen["Load Generator"]
-                end
-
-                subgraph Platform["Platform Services"]
-                    direction TB
-                    CertManager["cert-manager"]
-                    ExtDNS["ExternalDNS"]
                 end
 
                 subgraph Obs["Observability Platform"]
@@ -76,7 +77,7 @@ flowchart LR
     Gateway --> Frontend
     Frontend --> AdService
     Frontend --> CartService
-    LoadGen -.->|simulated<br/>traffic| Frontend
+    LoadGen -->|simulated<br/>traffic| LB
     AdService --> PostgreSQL
     CartService --> Valkey
 
@@ -98,7 +99,7 @@ flowchart LR
     Grafana --> Loki
 
     %% Logs flow
-    Alloy -.->|pod logs| App
+    App -.->|pod logs| Alloy
     Alloy --> Loki
     Loki --> Bucket
     PostgreSQL -->|rsyslog/TLS| SyslogNLB
@@ -138,6 +139,10 @@ flowchart LR
     style PostgreSQL fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
     style Valkey fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
     style Bucket fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+
+    %% Thicker lines for application traffic flow
+    %% Links: Internet-->LB, LB-->Gateway, Gateway-->Frontend, Frontend-->AdService, Frontend-->CartService, LoadGen-->LB, AdService-->PostgreSQL, CartService-->Valkey
+    linkStyle 1,2,3,4,5,6,7,8 stroke-width:3px
 ```
 
 Key observability features include:

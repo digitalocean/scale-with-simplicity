@@ -17,8 +17,7 @@ scale-with-simplicity/
 │   └── partner-network-connect-aws/ # DO to AWS via Megaport
 ├── reference-architectures/
 │   └── <ra-slug>/
-│       ├── diagram.mmd             # Mermaid architecture diagram
-│       ├── README.md               # Documentation with prerequisites, inputs, outputs
+│       ├── README.md               # Documentation with embedded Mermaid diagram, prerequisites, inputs, outputs
 │       ├── Makefile                # Standard targets: lint, test-unit, test-integration
 │       ├── k8s/                    # Kubernetes manifests (optional, for RAs with K8s resources)
 │       │   ├── namespace.yaml
@@ -397,36 +396,23 @@ See `reference-architectures/vllm-nfs/` for a complete example of this pattern.
 
 ## Architecture Diagrams (Mermaid)
 
-Each RA includes an architecture diagram using Mermaid format. Diagrams are stored in their own file (`diagram.mmd`) and referenced from the README, making them easy to version control and modify.
+Each RA includes an architecture diagram using Mermaid format. Diagrams must be embedded inline in the README so they render when viewing the README on GitHub.
 
-### File Organization
+### Embedding Diagrams in README
 
-Store the diagram in a separate file at `<ra-slug>/diagram.mmd`:
-
-```
-<ra-slug>/
-├── diagram.mmd          # Mermaid diagram source
-├── README.md            # References the diagram
-├── terraform/
-└── ...
-```
-
-### Referencing Diagrams in README
-
-Reference the diagram file in the README using a markdown code block with the mermaid language identifier and a file reference comment:
+Embed the diagram directly in the README using a mermaid code block. GitHub renders Mermaid diagrams natively when they are in a ```mermaid code block:
 
 ```markdown
 ## Architecture
 
-<!-- Diagram source: diagram.mmd -->
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {...}}}%%
 flowchart TB
-    %% Paste contents of diagram.mmd here
+    %% Diagram content here
 ```
 ```
 
-**Note**: GitHub renders Mermaid diagrams natively. When updating the diagram, edit `diagram.mmd` and copy the contents into the README's mermaid code block.
+**Important**: GitHub does not support referencing external `.mmd` files for inline rendering. The diagram must be embedded directly in the README for it to display when users view the documentation.
 
 ### DigitalOcean Diagram Style Guide
 
@@ -953,8 +939,8 @@ Both workflows use a shared Docker container image with Terraform, Go, and test 
 5. Create `test/go.mod` and run `go mod tidy`
 6. Write unit tests in `test/unit/unit_test.go`
 7. Write integration tests in `test/integration/apply_destroy_test.go`
-8. Create architecture diagram `diagram.mmd` following the Mermaid style guide
-9. Write comprehensive README.md with prerequisites, inputs, outputs, and embed the diagram
+8. Create architecture diagram embedded in README.md following the Mermaid style guide
+9. Write comprehensive README.md with prerequisites, inputs, outputs, and the embedded diagram
 10. Add two GitHub workflow files for PR checks and integration tests
 11. Update root README.md to include new RA in the table
 
@@ -970,4 +956,4 @@ See [CONTRIBUTE.md](./CONTRIBUTE.md) for detailed guidelines.
 - **Parallelism**: Use `t.Parallel()` in tests and unique prefixes to avoid collisions
 - **CIDR management**: Use `CidrAssigner` helper to avoid network conflicts in tests
 - **Kubernetes manifests**: Store K8s manifests in `k8s/` directory and load via `yamldecode()` rather than defining inline in Terraform
-- **Architecture diagrams**: Use Mermaid format in `diagram.mmd`, following the DigitalOcean style guide colors and conventions
+- **Architecture diagrams**: Embed Mermaid diagrams inline in README.md (not in separate files) so they render on GitHub, following the DigitalOcean style guide colors and conventions
