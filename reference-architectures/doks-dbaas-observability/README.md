@@ -9,8 +9,136 @@ This reference architecture demonstrates comprehensive observability for Digital
 
 ## Architecture Overview
 
-<!-- TODO: Add architecture diagram -->
-<img src="./doks-dbaas-observability.png" width="700">
+<!-- Diagram source: diagram.mmd -->
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#0069FF', 'primaryTextColor': '#333', 'primaryBorderColor': '#0069FF', 'lineColor': '#0069FF', 'secondaryColor': '#F3F5F9', 'tertiaryColor': '#fff', 'fontFamily': 'arial'}}}%%
+flowchart LR
+    subgraph DO["DigitalOcean Cloud"]
+        direction TB
+
+        %% External traffic flow
+        Internet(("Internet")) --> LB["External NLB<br/>(Application)"]
+        Internet --> DNS["DO DNS"]
+        LB --> Gateway
+
+        subgraph VPC["VPC (Private Network)"]
+            direction LR
+
+            subgraph DOKS["DOKS Kubernetes Cluster (Cilium CNI)"]
+                direction TB
+
+                subgraph App["Demo Application"]
+                    direction TB
+                    Gateway["Cilium Gateway<br/>+ Envoy"]
+                    Frontend["Frontend"]
+                    AdService["AdService"]
+                    CartService["CartService"]
+                    LoadGen["Load Generator"]
+                end
+
+                subgraph Platform["Platform Services"]
+                    direction TB
+                    CertManager["cert-manager"]
+                    ExtDNS["ExternalDNS"]
+                end
+
+                subgraph Obs["Observability Platform"]
+                    direction TB
+                    Prometheus["Prometheus"]
+                    Grafana["Grafana"]
+                    Alertmanager["Alertmanager"]
+                    Loki["Loki"]
+                    Alloy["Alloy<br/>(DaemonSet)"]
+                end
+
+                subgraph Exporters["Database Exporters"]
+                    direction TB
+                    PgExporter["postgres-exporter"]
+                    RedisExporter["redis-exporter"]
+                end
+            end
+
+            SyslogNLB["Internal NLB<br/>(Syslog)"]
+
+            subgraph DBaaS["Managed Databases"]
+                direction TB
+                PostgreSQL[("PostgreSQL<br/>(AdService DB)")]
+                Valkey[("Valkey<br/>(CartService Cache)")]
+            end
+        end
+
+        subgraph Storage["Spaces Object Storage"]
+            Bucket[("Loki Logs<br/>Bucket")]
+        end
+    end
+
+    %% Application traffic flow
+    Gateway --> Frontend
+    Frontend --> AdService
+    Frontend --> CartService
+    LoadGen -.->|simulated<br/>traffic| Frontend
+    AdService --> PostgreSQL
+    CartService --> Valkey
+
+    %% Platform connections
+    CertManager -.->|DNS-01<br/>challenge| DNS
+    ExtDNS -.->|manage<br/>records| DNS
+
+    %% Metrics flow - Prometheus scraping
+    Prometheus -.->|scrape| Gateway
+    Prometheus -.->|scrape| PgExporter
+    Prometheus -.->|scrape| RedisExporter
+    Prometheus -.->|scrape metrics<br/>endpoint| PostgreSQL
+    Prometheus -.->|scrape metrics<br/>endpoint| Valkey
+    PgExporter --> PostgreSQL
+    RedisExporter --> Valkey
+
+    %% Grafana data sources
+    Grafana --> Prometheus
+    Grafana --> Loki
+
+    %% Logs flow
+    Alloy -.->|pod logs| App
+    Alloy --> Loki
+    Loki --> Bucket
+    PostgreSQL -->|rsyslog/TLS| SyslogNLB
+    Valkey -->|rsyslog/TLS| SyslogNLB
+    SyslogNLB --> Alloy
+
+    %% Styling - Subgraphs
+    style DO fill:#E5E4E4,stroke:#0069FF,stroke-width:1px,stroke-dasharray:5
+    style VPC fill:#C6DDFF,stroke:#0069FF,stroke-width:1px,stroke-dasharray:5
+    style DOKS fill:#DCD1FF,stroke:#0069FF,stroke-width:1px,stroke-dasharray:5
+    style App fill:#B7EFFE,stroke:#0069FF,stroke-width:1px
+    style Platform fill:#B7EFFE,stroke:#0069FF,stroke-width:1px
+    style Obs fill:#FFE4C4,stroke:#0069FF,stroke-width:1px
+    style Exporters fill:#B7EFFE,stroke:#0069FF,stroke-width:1px
+    style DBaaS fill:#FFD6E0,stroke:#0069FF,stroke-width:1px
+    style Storage fill:#F3F5F9,stroke:#0069FF,stroke-width:1px
+
+    %% Styling - Components
+    style Internet fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style LB fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style DNS fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style Gateway fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style Frontend fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style AdService fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style CartService fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style LoadGen fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style CertManager fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style ExtDNS fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style Prometheus fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style Grafana fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style Alertmanager fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style Loki fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style Alloy fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style PgExporter fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style RedisExporter fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style SyslogNLB fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style PostgreSQL fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style Valkey fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style Bucket fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+```
 
 Key observability features include:
 
