@@ -4,7 +4,7 @@ data "digitalocean_spaces_bucket" "loki_logs" {
 }
 
 resource "digitalocean_spaces_key" "loki_logs" {
-  name = "loki-logs"
+  name   = "${var.name_prefix}-loki-logs"
   grant {
     bucket     = data.digitalocean_spaces_bucket.loki_logs.name
     permission = "readwrite"

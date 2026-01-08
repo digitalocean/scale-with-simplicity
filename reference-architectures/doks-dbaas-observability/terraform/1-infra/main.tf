@@ -93,7 +93,8 @@ resource "digitalocean_database_cluster" "cart_service" {
 
 # Bucket used store logs used by Loki
 resource "digitalocean_spaces_bucket" "loki_logs" {
-  name   = "${var.name_prefix}-loki-logs"
-  region = var.region
+  name          = "${var.name_prefix}-loki-logs"
+  region        = var.region
+  force_destroy = true # Required for clean test teardown when bucket contains Loki data
 }
 
