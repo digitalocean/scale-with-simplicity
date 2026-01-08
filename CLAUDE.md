@@ -446,7 +446,36 @@ After creating `go.mod`, run `go mod tidy` to generate `go.sum`.
 
 Unit tests validate that `terraform plan` succeeds without errors.
 
-**Single-Stack RA:**
+**Single-Stack RA (uses local modules from `modules/`):**
+
+When your RA references modules via relative paths like `../../../modules/`, you must copy from repo root to preserve those paths:
+
+```go
+func TestPlan(t *testing.T) {
+	t.Parallel()
+
+	// Copy from repo root to preserve relative module paths (../../../modules/)
+	tempRoot := test_structure.CopyTerraformFolderToTemp(t, "../../../..", ".")
+	testDir := filepath.Join(tempRoot, "reference-architectures", "<ra-slug>", "terraform")
+	err := files.CopyFile("../test.tfvars", filepath.Join(testDir, "test.tfvars"))
+	if err != nil {
+		t.Fatalf("Failed to copy tfvars file: %v", err)
+	}
+
+	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
+		TerraformDir: testDir,
+		MixedVars:    []terraform.Var{terraform.VarFile("test.tfvars")},
+		NoColor:      true,
+		PlanFilePath: "plan.out",
+	})
+
+	terraform.InitAndPlanAndShow(t, terraformOptions)
+}
+```
+
+**Single-Stack RA (no local modules):**
+
+If your RA only uses remote modules (registry or git), you can use the simpler pattern:
 
 ```go
 func TestPlan(t *testing.T) {
@@ -498,7 +527,41 @@ func TestPlanInfra(t *testing.T) {
 
 Integration tests perform full apply/destroy lifecycle.
 
-**Single-Stack RA:**
+**Single-Stack RA (uses local modules from `modules/`):**
+
+When your RA references modules via relative paths like `../../../modules/`, you must copy from repo root to preserve those paths:
+
+```go
+func TestApplyAndDestroy(t *testing.T) {
+	t.Parallel()
+
+	testNamePrefix := fmt.Sprintf("test-%s", strings.ToLower(random.UniqueId()))
+
+	// Copy from repo root to preserve relative module paths (../../../modules/)
+	tempRoot := test_structure.CopyTerraformFolderToTemp(t, "../../../..", ".")
+	testDir := filepath.Join(tempRoot, "reference-architectures", "<ra-slug>", "terraform")
+	if err := files.CopyFile("../test.tfvars", filepath.Join(testDir, "test.tfvars")); err != nil {
+		t.Fatalf("Failed to copy tfvars file: %v", err)
+	}
+
+	terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
+		TerraformDir: testDir,
+		MixedVars: []terraform.Var{
+			terraform.VarFile("test.tfvars"),
+			terraform.VarInline("name_prefix", testNamePrefix),
+		},
+		NoColor: true,
+	})
+
+	defer helper.TerraformDestroyVpcWithMembers(t, terraformOptions)
+
+	terraform.InitAndApply(t, terraformOptions)
+}
+```
+
+**Single-Stack RA (no local modules):**
+
+If your RA only uses remote modules (registry or git), you can use the simpler pattern:
 
 ```go
 func TestApplyAndDestroy(t *testing.T) {
