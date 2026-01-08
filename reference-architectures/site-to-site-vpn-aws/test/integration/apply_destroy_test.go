@@ -79,8 +79,9 @@ func TestApplyAndDestroy(t *testing.T) {
 	// Generate unique prefix. K8s resources names cannot start with a number
 	testNamePrefix := fmt.Sprintf("test-%s", strings.ToLower(random.UniqueId()))
 
-	// Copy code and tfvars
-	testDir := test_structure.CopyTerraformFolderToTemp(t, "../..", "./terraform")
+	// Copy from repo root to preserve relative module paths (../../../modules/)
+	tempRoot := test_structure.CopyTerraformFolderToTemp(t, "../../../..", ".")
+	testDir := filepath.Join(tempRoot, "reference-architectures", "site-to-site-vpn-aws", "terraform")
 	if err := files.CopyFile("../test.tfvars", filepath.Join(testDir, "test.tfvars")); err != nil {
 		t.Fatalf("Failed to copy tfvars file: %v", err)
 	}

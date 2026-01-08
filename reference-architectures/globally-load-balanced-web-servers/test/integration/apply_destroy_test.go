@@ -21,7 +21,10 @@ import (
 func TestApplyAndDestroy(t *testing.T) {
 	t.Parallel()
 	testNamePrefix := strings.ToLower(random.UniqueId())
-	testDir := test_structure.CopyTerraformFolderToTemp(t, "../..", "./terraform")
+
+	// Copy from repo root to preserve relative module paths (../../../modules/)
+	tempRoot := test_structure.CopyTerraformFolderToTemp(t, "../../../..", ".")
+	testDir := filepath.Join(tempRoot, "reference-architectures", "globally-load-balanced-web-servers", "terraform")
 	err := files.CopyFile("../test.tfvars", filepath.Join(testDir, "test.tfvars"))
 	if err != nil {
 		t.Fatalf("Failed to copy tfvars file: %v", err)
