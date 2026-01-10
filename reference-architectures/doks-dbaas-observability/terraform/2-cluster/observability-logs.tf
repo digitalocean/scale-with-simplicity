@@ -4,7 +4,7 @@ data "digitalocean_spaces_bucket" "loki_logs" {
 }
 
 resource "digitalocean_spaces_key" "loki_logs" {
-  name   = "${var.name_prefix}-loki-logs"
+  name = "${var.name_prefix}-loki-logs"
   grant {
     bucket     = data.digitalocean_spaces_bucket.loki_logs.name
     permission = "readwrite"
@@ -270,7 +270,7 @@ resource "helm_release" "alloy" {
       }
     })
   ]
-  depends_on = [kubernetes_secret_v1.alloy_syslog_tls]
+  depends_on = [kubernetes_manifest.syslog_server_certificate]
 }
 
 # LoadBalancer Service for Log Sink - exposes Alloy's syslog listener to external rsyslog sources
@@ -302,115 +302,90 @@ resource "kubernetes_service_v1" "alloy_syslog_nlb" {
   }
 }
 
-# --- TLS Certificate Generation for Syslog ---
-# Using Terraform TLS provider instead of cert-manager for the CA.
-# This allows the CA certificate to be used by the logsink resource.
+# --- TLS Certificate Generation for Syslog using cert-manager ---
+# Using cert-manager to generate a self-signed CA and server certificate.
+# The CA certificate is stored in a Kubernetes secret that Stack 3 reads
+# to configure database logsinks, decoupling the stacks via K8s secrets
+# rather than Terraform state.
 
-# Generate CA private key
-resource "tls_private_key" "syslog_ca" {
-  algorithm   = "ECDSA"
-  ecdsa_curve = "P256"
-}
-
-# Generate self-signed CA certificate
-resource "tls_self_signed_cert" "syslog_ca" {
-  private_key_pem = tls_private_key.syslog_ca.private_key_pem
-
-  subject {
-    common_name  = "Syslog Log Sink CA"
-    organization = "DigitalOcean Reference Architecture"
+# Self-signed ClusterIssuer for creating a root CA
+resource "kubernetes_manifest" "syslog_ca_issuer" {
+  manifest = {
+    apiVersion = "cert-manager.io/v1"
+    kind       = "ClusterIssuer"
+    metadata = {
+      name = "syslog-ca-issuer"
+    }
+    spec = {
+      selfSigned = {}
+    }
   }
-
-  validity_period_hours = 87600 # 10 years
-  is_ca_certificate     = true
-
-  allowed_uses = [
-    "cert_signing",
-    "crl_signing",
-  ]
+  depends_on = [helm_release.cert_manager]
 }
 
-# Generate server private key
-resource "tls_private_key" "syslog_server" {
-  algorithm   = "ECDSA"
-  ecdsa_curve = "P256"
-}
-
-# Generate server certificate signing request
-resource "tls_cert_request" "syslog_server" {
-  private_key_pem = tls_private_key.syslog_server.private_key_pem
-
-  subject {
-    common_name  = var.log_sink_fqdn
-    organization = "DigitalOcean Reference Architecture"
+# Root CA Certificate - stored in syslog-ca-secret
+resource "kubernetes_manifest" "syslog_ca_certificate" {
+  manifest = {
+    apiVersion = "cert-manager.io/v1"
+    kind       = "Certificate"
+    metadata = {
+      name      = "syslog-ca"
+      namespace = kubernetes_namespace_v1.cluster_services.metadata[0].name
+    }
+    spec = {
+      isCA       = true
+      commonName = "Syslog Log Sink CA"
+      secretName = "syslog-ca-secret"
+      privateKey = {
+        algorithm = "ECDSA"
+        size      = 256
+      }
+      issuerRef = {
+        name  = kubernetes_manifest.syslog_ca_issuer.manifest.metadata.name
+        kind  = "ClusterIssuer"
+        group = "cert-manager.io"
+      }
+    }
   }
-
-  dns_names = [var.log_sink_fqdn]
 }
 
-# Sign server certificate with CA
-resource "tls_locally_signed_cert" "syslog_server" {
-  cert_request_pem   = tls_cert_request.syslog_server.cert_request_pem
-  ca_private_key_pem = tls_private_key.syslog_ca.private_key_pem
-  ca_cert_pem        = tls_self_signed_cert.syslog_ca.cert_pem
-
-  validity_period_hours = 8760 # 1 year
-
-  allowed_uses = [
-    "key_encipherment",
-    "digital_signature",
-    "server_auth",
-  ]
-}
-
-# Store server certificate in Kubernetes secret (used by Alloy)
-resource "kubernetes_secret_v1" "alloy_syslog_tls" {
-  metadata {
-    name      = "alloy-syslog-tls"
-    namespace = kubernetes_namespace_v1.cluster_services.metadata[0].name
+# CA ClusterIssuer using the generated CA
+resource "kubernetes_manifest" "syslog_ca_cluster_issuer" {
+  manifest = {
+    apiVersion = "cert-manager.io/v1"
+    kind       = "ClusterIssuer"
+    metadata = {
+      name = "syslog-ca-cluster-issuer"
+    }
+    spec = {
+      ca = {
+        secretName = kubernetes_manifest.syslog_ca_certificate.manifest.spec.secretName
+      }
+    }
   }
-  data = {
-    "tls.crt" = tls_locally_signed_cert.syslog_server.cert_pem
-    "tls.key" = tls_private_key.syslog_server.private_key_pem
+}
+
+# Server Certificate for Alloy syslog listener - stored in alloy-syslog-tls
+resource "kubernetes_manifest" "syslog_server_certificate" {
+  manifest = {
+    apiVersion = "cert-manager.io/v1"
+    kind       = "Certificate"
+    metadata = {
+      name      = "syslog-server-cert"
+      namespace = kubernetes_namespace_v1.cluster_services.metadata[0].name
+    }
+    spec = {
+      secretName = "alloy-syslog-tls"
+      issuerRef = {
+        name  = kubernetes_manifest.syslog_ca_cluster_issuer.manifest.metadata.name
+        kind  = "ClusterIssuer"
+        group = "cert-manager.io"
+      }
+      dnsNames = [var.log_sink_fqdn]
+      privateKey = {
+        algorithm = "ECDSA"
+        size      = 256
+      }
+    }
   }
-  type = "kubernetes.io/tls"
-}
-
-# --- Database Log Sink Configuration ---
-# Forwards logs from managed databases to Loki via rsyslog over TLS.
-# These resources are in stack 2 (rather than stack 3 with database metrics)
-# because they depend on the TLS CA certificate created above, minimizing
-# cross-stack state dependencies.
-
-# Data sources for databases created in stack 1
-data "digitalocean_database_cluster" "adservice" {
-  name = "${var.name_prefix}-adservice-pg"
-}
-
-data "digitalocean_database_cluster" "cartservice" {
-  name = "${var.name_prefix}-cartservice-valkey"
-}
-
-# Rsyslog logsink for AdService PostgreSQL database
-# Note: Sink names have a ~24 character limit
-resource "digitalocean_database_logsink_rsyslog" "adservice" {
-  cluster_id = data.digitalocean_database_cluster.adservice.id
-  name       = "loki-adservice-pg"
-  server     = var.log_sink_fqdn
-  port       = 6514
-  tls        = true
-  format     = "rfc5424"
-  ca_cert    = tls_self_signed_cert.syslog_ca.cert_pem
-}
-
-# Rsyslog logsink for CartService Valkey database
-# Note: Sink names have a ~24 character limit
-resource "digitalocean_database_logsink_rsyslog" "cartservice" {
-  cluster_id = data.digitalocean_database_cluster.cartservice.id
-  name       = "loki-cartservice-valkey"
-  server     = var.log_sink_fqdn
-  port       = 6514
-  tls        = true
-  format     = "rfc5424"
-  ca_cert    = tls_self_signed_cert.syslog_ca.cert_pem
 }
