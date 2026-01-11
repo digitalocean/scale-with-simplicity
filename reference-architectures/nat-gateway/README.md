@@ -4,7 +4,66 @@ This reference architecture demonstrates how to route all egress traffic from bo
 
 ## Architecture Overview
 
-<img src="./nat-gateway.png" width="700">
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#0069FF', 'primaryTextColor': '#333', 'primaryBorderColor': '#0069FF', 'lineColor': '#0069FF', 'secondaryColor': '#F3F5F9', 'tertiaryColor': '#fff', 'fontFamily': 'arial'}}}%%
+flowchart TB
+    subgraph Wrapper[" "]
+        direction TB
+        Internet(("Internet"))
+
+        subgraph DO["DigitalOcean Cloud"]
+            direction TB
+
+            subgraph VPC["VPC"]
+                direction TB
+
+                NATGW["NAT Gateway"]
+
+                subgraph DOKS["DOKS Cluster"]
+                    RoutingAgent["Routing Agent"]
+                end
+
+                subgraph Droplets["Droplets"]
+                    direction LR
+                    Bastion["Bastion"]
+                    Private["Private"]
+                end
+
+                BastionFW["Firewall<br/>(Allow SSH)"]
+                PrivateFW["Firewall<br/>(Allow RFC1918)"]
+            end
+        end
+
+        %% Outbound Internet traffic flow
+        DOKS -->|outbound<br/>traffic| NATGW
+        Private -->|outbound<br/>traffic| NATGW
+        NATGW -->|egress| Internet
+
+        %% Admin SSH access
+        Internet -->|admin SSH| Bastion
+        Bastion -->|SSH via<br/>private IP| Private
+
+        %% Firewall associations
+        BastionFW -.-> Bastion
+        PrivateFW -.-> Private
+    end
+
+    %% Styling - Subgraphs
+    style Wrapper fill:#FFFFFF,stroke:#FFFFFF
+    style DO fill:#E5E4E4,stroke:#0069FF,stroke-width:1px,stroke-dasharray:5
+    style VPC fill:#C6DDFF,stroke:#0069FF,stroke-width:1px,stroke-dasharray:5
+    style DOKS fill:#DCD1FF,stroke:#0069FF,stroke-width:1px
+    style Droplets fill:#B7EFFE,stroke:#0069FF,stroke-width:1px
+
+    %% Styling - Components
+    style Internet fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style NATGW fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style RoutingAgent fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style Bastion fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style Private fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style BastionFW fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style PrivateFW fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+```
 
 1. **DigitalOcean VPC**
     * A VPC with a **NAT Gateway** providing centralized egress routing
