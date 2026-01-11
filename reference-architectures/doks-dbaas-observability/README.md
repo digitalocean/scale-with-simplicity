@@ -102,8 +102,8 @@ flowchart LR
     App -.->|pod logs| Alloy
     Alloy --> Loki
     Loki --> Bucket
-    PostgreSQL -->|rsyslog/TLS| SyslogNLB
-    Valkey -->|rsyslog/TLS| SyslogNLB
+    PostgreSQL -->|rsyslog| SyslogNLB
+    Valkey -->|rsyslog| SyslogNLB
     SyslogNLB --> Alloy
 
     %% Styling - Subgraphs
@@ -153,7 +153,7 @@ Key observability features include:
 | **Log Aggregation** | Loki collecting pod logs, Kubernetes events, and database logs via rsyslog |
 | **Visualization** | Pre-configured Grafana dashboards for databases, Cilium, and Gateway metrics |
 | **Database Monitoring** | Direct metrics endpoint scraping plus exporters for detailed database observability |
-| **Secure Log Sink** | TLS-enabled syslog listener for forwarding managed database logs to Loki |
+| **Log Sink** | Syslog listener for forwarding managed database logs to Loki (internal VPC traffic, unencrypted) |
 
 ## Prerequisites
 
@@ -231,11 +231,11 @@ This stack installs the core observability platform and essential cluster servic
 |-----------|-------------|
 | **kube-prometheus-stack** | Prometheus (5Gi storage, 7-day retention), Grafana with 5 pre-loaded dashboards, Alertmanager (2 replicas) |
 | **Loki** | Log aggregation in SimpleScalable mode with Spaces backend, 7-day retention, TSDB index |
-| **Alloy** | DaemonSet for container log collection, Kubernetes event collection, TLS syslog listener (port 6514) with internal LoadBalancer |
+| **Alloy** | DaemonSet for container log collection, Kubernetes event collection, syslog listener (port 514) with internal LoadBalancer |
 | **cert-manager** | TLS certificate automation, Gateway API support |
 | **ExternalDNS** | Automatic DNS record management for Services and Gateway API resources |
 | **Metrics Server** | Enables HPA and resource-based metrics (2 replicas) |
-| **Database Log Sinks** | rsyslog sinks for PostgreSQL and Valkey logs (RFC5424 format, TLS-secured) |
+| **Database Log Sinks** | rsyslog sinks for PostgreSQL and Valkey logs (RFC5424 format, internal VPC traffic) |
 
 Create a `terraform.tfvars` file:
 
