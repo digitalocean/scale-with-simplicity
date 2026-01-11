@@ -13,9 +13,5 @@ terraform {
       source  = "hashicorp/helm"
       version = "~> 3"
     }
-    http = {
-      source  = "hashicorp/http"
-      version = "~> 3"
-    }
   }
 }

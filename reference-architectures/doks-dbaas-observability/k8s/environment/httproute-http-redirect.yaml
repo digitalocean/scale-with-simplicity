@@ -1,0 +1,32 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: demo-frontend-http-redirect
+  namespace: ${namespace}
+spec:
+  # parentRefs define which Gateway listeners this HTTPRoute binds to
+  parentRefs:
+    - name: demo-http
+      namespace: ${namespace}
+      # Bind to the HTTP listener (port 80) - used for redirect
+      sectionName: http
+
+  # Only accept traffic for this specific hostname
+  hostnames:
+    - ${fqdn}
+
+  # Routing rules define how to match incoming requests and where to send them
+  rules:
+    - # Match conditions - when should this rule apply?
+      matches:
+        - path:
+            # PathPrefix matching means any path starting with "/" (i.e., all paths)
+            type: PathPrefix
+            value: "/"
+
+      filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            port: 443
+            statusCode: 301

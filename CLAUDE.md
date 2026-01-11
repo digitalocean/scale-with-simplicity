@@ -17,8 +17,7 @@ scale-with-simplicity/
 │   └── partner-network-connect-aws/ # DO to AWS via Megaport
 ├── reference-architectures/
 │   └── <ra-slug>/
-│       ├── <ra-slug>.png          # Architecture diagram
-│       ├── README.md               # Documentation with prerequisites, inputs, outputs
+│       ├── README.md               # Documentation with embedded Mermaid diagram, prerequisites, inputs, outputs
 │       ├── Makefile                # Standard targets: lint, test-unit, test-integration
 │       ├── k8s/                    # Kubernetes manifests (optional, for RAs with K8s resources)
 │       │   ├── namespace.yaml
@@ -395,6 +394,270 @@ resource "kubernetes_manifest" "setup_job" {
 
 See `reference-architectures/vllm-nfs/` for a complete example of this pattern.
 
+## Architecture Diagrams (Mermaid)
+
+Each RA includes an architecture diagram using Mermaid format. Diagrams must be embedded inline in the README so they render when viewing the README on GitHub.
+
+### Embedding Diagrams in README
+
+Embed the diagram directly in the README using a mermaid code block. GitHub renders Mermaid diagrams natively when they are in a ```mermaid code block:
+
+```markdown
+## Architecture
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {...}}}%%
+flowchart TB
+    %% Diagram content here
+```
+```
+
+**Important**: GitHub does not support referencing external `.mmd` files for inline rendering. The diagram must be embedded directly in the README for it to display when users view the documentation.
+
+### DigitalOcean Diagram Style Guide
+
+Follow the DigitalOcean color palette and styling conventions for consistent diagrams across all RAs.
+
+#### Theme Initialization
+
+Always start diagrams with a theme initialization directive to ensure consistent colors and fonts:
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#0069FF', 'primaryTextColor': '#333', 'primaryBorderColor': '#0069FF', 'lineColor': '#0069FF', 'secondaryColor': '#F3F5F9', 'tertiaryColor': '#fff', 'fontFamily': 'arial'}}}%%
+flowchart TB
+    ...
+```
+
+#### Color Palette
+
+**Subgraph Background Colors:**
+
+| Element Type | Background Color | Usage |
+|--------------|------------------|-------|
+| Light Grey | `#E5E4E4` | Outer containers, cloud regions |
+| Light Blue | `#C6DDFF` | VPC, network groupings |
+| Light Purple | `#DCD1FF` | Kubernetes clusters |
+| Light Teal | `#B7EFFE` | Application groupings, platform services |
+| Light Orange | `#FFE4C4` | Observability, monitoring components |
+| Light Pink | `#FFD6E0` | Managed databases |
+| Light Gray | `#F3F5F9` | Storage, general groupings |
+
+**Node Colors:**
+
+All component nodes use light gray fill (`#F3F5F9`) with blue stroke (`#0069FF`). Do NOT use solid blue fill for nodes.
+
+#### Direction Directives
+
+Use `direction` within subgraphs to control layout flow:
+
+```mermaid
+subgraph VPC["VPC (Private Network)"]
+    direction TB
+
+    subgraph DOKS["DOKS Kubernetes Cluster"]
+        direction LR
+        ...
+    end
+end
+```
+
+- `direction TB` - Top to bottom (vertical stacking)
+- `direction LR` - Left to right (horizontal arrangement)
+
+#### Node Syntax Conventions
+
+Use quotes in node labels and appropriate shapes:
+
+```mermaid
+%% Standard nodes - use quotes
+Gateway["Cilium Gateway"]
+Frontend["Frontend"]
+
+%% Databases - cylinder shape with quotes
+PostgreSQL[("PostgreSQL<br/>(AdService DB)")]
+Valkey[("Valkey<br/>(CartService Cache)")]
+
+%% External entry points - double parentheses for circles
+Internet(("Internet"))
+
+%% Multi-line labels - use <br/>
+PGExporter["PGExporter<br/>(postgres-exporter)"]
+```
+
+#### Styling Approach
+
+Apply styles individually to each node and subgraph at the **end** of the diagram file. Group all styling together for maintainability:
+
+```mermaid
+%% Subgraph styling - grouped at end
+style DO fill:#E5E4E4,stroke:#0069FF,stroke-width:1px,stroke-dasharray:5
+style VPC fill:#C6DDFF,stroke:#0069FF,stroke-width:1px,stroke-dasharray:5
+style DOKS fill:#DCD1FF,stroke:#0069FF,stroke-width:1px,stroke-dasharray:5
+style App fill:#B7EFFE,stroke:#0069FF,stroke-width:1px
+style Obs fill:#FFE4C4,stroke:#0069FF,stroke-width:1px
+style DBaaS fill:#FFD6E0,stroke:#0069FF,stroke-width:1px
+
+%% Component nodes - all use light gray fill
+style Gateway fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+style Frontend fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+style PostgreSQL fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+```
+
+**Style properties:**
+- `stroke-width:1px` for subgraphs
+- `stroke-width:2px` for component nodes
+- `stroke-dasharray:5` for dashed borders on outer containers
+
+#### Functional Grouping
+
+Group components by **functional role**, not by Kubernetes namespace:
+
+```mermaid
+subgraph DOKS["DOKS Kubernetes Cluster"]
+    subgraph App["Demo Application"]
+        Gateway["Cilium Gateway"]
+        Frontend["Frontend"]
+    end
+
+    subgraph Platform["Platform Services"]
+        CertManager["cert-manager"]
+        ExtDNS["ExternalDNS"]
+    end
+
+    subgraph Obs["Observability Platform"]
+        Prometheus["Prometheus"]
+        Grafana["Grafana"]
+        Loki["Loki"]
+    end
+end
+```
+
+### Connection Labels
+
+Use descriptive labels on connections to clarify data flows:
+
+```mermaid
+%% Traffic flow
+Internet --> LB --> Gateway
+Gateway --> Frontend
+
+%% Labeled connections for clarity
+PostgreSQL -->|metrics| PGExporter
+PGExporter -->|scrape| Prometheus
+PostgreSQL -.->|rsyslog/TLS| Alloy
+LoadGen -.->|simulated<br/>traffic| Frontend
+CertManager -.->|TLS certs| Gateway
+```
+
+- Solid arrows (`-->`) for primary data/traffic flow
+- Dotted arrows (`-.->`) for secondary flows (metrics, logs, config)
+- Use `<br/>` for multi-line labels
+
+### Node Shape Reference
+
+| Shape | Syntax | Use For |
+|-------|--------|---------|
+| Rectangle | `["text"]` | Services, components |
+| Database | `[("text")]` | Databases, storage buckets |
+| Circle | `(("text"))` | External entry points (Internet) |
+| Rounded | `(["text"])` | Load balancers |
+
+### Diagram Best Practices
+
+1. **Start with theme init** - Always include the `%%{init:...}%%` directive
+2. **Define traffic flow first** - Establish the main flow early to guide layout
+3. **Group by function** - Use subgraphs for App, Platform, Observability, Databases
+4. **Use direction directives** - Control layout within subgraphs
+5. **Label connections** - Use descriptive labels like `|rsyslog/TLS|`
+6. **Style at the end** - Group all `style` directives at the bottom
+7. **Use `<br/>` for clarity** - Multi-line labels improve readability
+
+### Example Complete Diagram
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#0069FF', 'primaryTextColor': '#333', 'primaryBorderColor': '#0069FF', 'lineColor': '#0069FF', 'secondaryColor': '#F3F5F9', 'tertiaryColor': '#fff', 'fontFamily': 'arial'}}}%%
+flowchart TB
+    %% Define traffic flow first
+    Internet(("Internet")) --> LB["Load Balancer"] --> Gateway
+
+    subgraph DO["DigitalOcean Cloud"]
+        direction LR
+
+        subgraph VPC["VPC (Private Network)"]
+            direction TB
+
+            subgraph DOKS["DOKS Kubernetes Cluster"]
+                direction LR
+
+                subgraph App["Demo Application"]
+                    direction TB
+                    Gateway["Cilium Gateway"]
+                    Frontend["Frontend"]
+                    Backend["Backend Service"]
+                end
+
+                subgraph Platform["Platform Services"]
+                    direction LR
+                    CertManager["cert-manager"]
+                    ExtDNS["ExternalDNS"]
+                end
+
+                subgraph Obs["Observability"]
+                    direction TB
+                    Prometheus["Prometheus"]
+                    Grafana["Grafana"]
+                end
+            end
+
+            subgraph DBaaS["Managed Databases"]
+                direction LR
+                PostgreSQL[("PostgreSQL<br/>(App DB)")]
+            end
+        end
+
+        subgraph Storage["Spaces Object Storage"]
+            Backups[("Backups")]
+        end
+    end
+
+    %% Traffic flow
+    Gateway --> Frontend
+    Frontend --> Backend
+    Backend --> PostgreSQL
+
+    %% Platform connections
+    CertManager -.->|TLS certs| Gateway
+    ExtDNS -.->|DNS records| LB
+
+    %% Observability
+    Backend -->|metrics| Prometheus
+    Prometheus --> Grafana
+    Backend -.->|backups| Backups
+
+    %% Styling - Subgraphs
+    style DO fill:#E5E4E4,stroke:#0069FF,stroke-width:1px,stroke-dasharray:5
+    style VPC fill:#C6DDFF,stroke:#0069FF,stroke-width:1px,stroke-dasharray:5
+    style DOKS fill:#DCD1FF,stroke:#0069FF,stroke-width:1px,stroke-dasharray:5
+    style App fill:#B7EFFE,stroke:#0069FF,stroke-width:1px
+    style Platform fill:#B7EFFE,stroke:#0069FF,stroke-width:1px
+    style Obs fill:#FFE4C4,stroke:#0069FF,stroke-width:1px
+    style DBaaS fill:#FFD6E0,stroke:#0069FF,stroke-width:1px
+    style Storage fill:#F3F5F9,stroke:#0069FF,stroke-width:1px
+
+    %% Styling - Components
+    style Internet fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style LB fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style Gateway fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style Frontend fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style Backend fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style CertManager fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style ExtDNS fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style PostgreSQL fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style Prometheus fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style Grafana fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style Backups fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+```
+
 ## Testing Architecture
 
 ### Test Helper Library
@@ -676,8 +939,8 @@ Both workflows use a shared Docker container image with Terraform, Go, and test 
 5. Create `test/go.mod` and run `go mod tidy`
 6. Write unit tests in `test/unit/unit_test.go`
 7. Write integration tests in `test/integration/apply_destroy_test.go`
-8. Create architecture diagram `<ra-slug>.png`
-9. Write comprehensive README.md with prerequisites, inputs, outputs, examples
+8. Create architecture diagram embedded in README.md following the Mermaid style guide
+9. Write comprehensive README.md with prerequisites, inputs, outputs, and the embedded diagram
 10. Add two GitHub workflow files for PR checks and integration tests
 11. Update root README.md to include new RA in the table
 
@@ -693,3 +956,4 @@ See [CONTRIBUTE.md](./CONTRIBUTE.md) for detailed guidelines.
 - **Parallelism**: Use `t.Parallel()` in tests and unique prefixes to avoid collisions
 - **CIDR management**: Use `CidrAssigner` helper to avoid network conflicts in tests
 - **Kubernetes manifests**: Store K8s manifests in `k8s/` directory and load via `yamldecode()` rather than defining inline in Terraform
+- **Architecture diagrams**: Embed Mermaid diagrams inline in README.md (not in separate files) so they render on GitHub, following the DigitalOcean style guide colors and conventions

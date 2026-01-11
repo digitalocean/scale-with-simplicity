@@ -1,0 +1,31 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: demo-frontend-https
+  namespace: ${namespace}
+spec:
+  # parentRefs define which Gateway listeners this HTTPRoute binds to
+  parentRefs:
+    - name: demo-http
+      namespace: ${namespace}
+      # Bind to the HTTPS listener (port 443) - used for secure application traffic
+      sectionName: https
+
+  # Only accept traffic for this specific hostname
+  hostnames:
+    - ${fqdn}
+
+  # Routing rules define how to match incoming requests and where to send them
+  rules:
+    - # Match conditions - when should this rule apply?
+      matches:
+        - path:
+            # PathPrefix matching means any path starting with "/" (i.e., all paths)
+            type: PathPrefix
+            value: "/"
+
+      # Backend references - where should matching traffic be sent?
+      backendRefs:
+        - # Send traffic to the "frontend" Service on port 80
+          name: frontend
+          port: 80

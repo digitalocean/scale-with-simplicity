@@ -1,6 +1,6 @@
 locals {
   tags = [
-    "single-doks-cluster",
+    "doks-dbaas-observability",
     var.name_prefix
   ]
 }
@@ -53,11 +53,7 @@ resource "digitalocean_kubernetes_cluster" "primary_cluster" {
   service_subnet                   = var.doks_service_subnet
   destroy_all_associated_resources = true
   ha                               = var.doks_control_plane_ha
-  # Disabled for now due to a bug with routing to NLB for a Gateway from within the cluster.
-  # routing_agent {
-  #   enabled = true
-  # }
-  tags = local.tags
+  tags                             = local.tags
   node_pool {
     name       = "${var.name_prefix}-${data.digitalocean_sizes.slug_2vcpu_4gb.sizes[0].slug}"
     size       = data.digitalocean_sizes.slug_2vcpu_4gb.sizes[0].slug
@@ -97,7 +93,8 @@ resource "digitalocean_database_cluster" "cart_service" {
 
 # Bucket used store logs used by Loki
 resource "digitalocean_spaces_bucket" "loki_logs" {
-  name   = "${var.name_prefix}-loki-logs"
-  region = var.region
+  name          = "${var.name_prefix}-loki-logs"
+  region        = var.region
+  force_destroy = true # Required for clean test teardown when bucket contains Loki data
 }
 

@@ -10,7 +10,7 @@ resource "kubernetes_config_map_v1" "grafana_dashboard_postgres_exporter" {
     }
   }
   data = {
-    "postgres-exporter.json"       = file("${path.module}/dashboards/postgres-exporter.json")
+    "postgres-exporter.json" = file("${path.module}/dashboards/postgres-exporter.json")
   }
 }
 
@@ -24,7 +24,7 @@ resource "kubernetes_config_map_v1" "grafana_dashboards_redis_exporter" {
     }
   }
   data = {
-    "redis-exporter.json"          = file("${path.module}/dashboards/redis-exporter.json")
+    "redis-exporter.json" = file("${path.module}/dashboards/redis-exporter.json")
   }
 }
 
@@ -77,19 +77,12 @@ resource "kubernetes_secret_v1" "grafana_admin" {
     namespace = "cluster-services"
   }
   data = {
-    admin-user = "admin"
+    admin-user     = "admin"
     admin-password = var.grafana_password
   }
   type = "Opaque"
 }
 
-
-# This data source fetches the default values file for the kube-prometheus-stack Helm chart.
-# This allows us to use the official recommended base configuration from DigitalOcean's marketplace
-# and then apply our specific customizations on top of it.
-data "http" "kube_prometheus_stack_values" {
-  url = "https://raw.githubusercontent.com/digitalocean/marketplace-kubernetes/master/stacks/kube-prometheus-stack/values.yml"
-}
 
 # This resource deploys the kube-prometheus-stack, a comprehensive monitoring solution for Kubernetes.
 # It bundles Prometheus for metrics collection, Grafana for visualization, and Alertmanager for alerting.
@@ -109,7 +102,7 @@ resource "helm_release" "kube_prometheus_stack" {
             volumeClaimTemplate = {
               spec = {
                 storageClassName = "do-block-storage"
-                accessModes =  ["ReadWriteOnce"]
+                accessModes      = ["ReadWriteOnce"]
                 resources = {
                   requests = {
                     # Size of volume
@@ -120,8 +113,8 @@ resource "helm_release" "kube_prometheus_stack" {
             }
           }
           # Specify retention to ensure volume does not fill up
-          retention       = "7d"
-          retentionSize   = "4GiB"
+          retention     = "7d"
+          retentionSize = "4GiB"
           # Needed in later K8s clusters where Endpoints have been replaced by EndpointSlice
           serviceDiscoveryRole = "EndpointSlice"
         }
@@ -131,10 +124,10 @@ resource "helm_release" "kube_prometheus_stack" {
         rules = {
           # These run on management cluster
           kubeControllerManager = false
-          etcd = false
-          kubeScheduler = false
+          etcd                  = false
+          kubeScheduler         = false
           # kubeProxy replaced by Cilium
-          kubeProxy             = false
+          kubeProxy = false
         }
       }
 

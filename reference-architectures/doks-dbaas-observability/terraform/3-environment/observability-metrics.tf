@@ -9,39 +9,7 @@ data "digitalocean_database_metrics_credentials" "default" {}
 # - Port 9964 (envoy-metrics): Envoy proxy metrics for L7 visibility including HTTP request rates,
 #   latencies, and status codes for Gateway traffic
 resource "kubernetes_manifest" "cilium_podmonitor" {
-  manifest = {
-    apiVersion = "monitoring.coreos.com/v1"
-    kind       = "PodMonitor"
-    metadata = {
-      name      = "cilium"
-      namespace = "cluster-services"
-      labels = {
-        release = "kube-prometheus-stack"
-      }
-    }
-    spec = {
-      selector = {
-        matchLabels = {
-          "k8s-app" = "cilium"
-        }
-      }
-      namespaceSelector = {
-        matchNames = ["kube-system"]
-      }
-      podMetricsEndpoints = [
-        {
-          port     = "prometheus"
-          interval = "30s"
-          path     = "/metrics"
-        },
-        {
-          port     = "envoy-metrics"
-          interval = "30s"
-          path     = "/metrics"
-        }
-      ]
-    }
-  }
+  manifest = yamldecode(file("${path.module}/../../k8s/environment/podmonitor-cilium.yaml"))
 }
 
 ### AdService (PostgreSQL) Observability ###
@@ -96,53 +64,13 @@ resource "kubernetes_config_map_v1" "adservice_database_configuration" {
 
 # Creates a ScrapeConfig for the AdService's PostgreSQL database.
 # ScrapeConfig is a custom resource that allows for more detailed and advanced scrape configurations
-# than a ServiceMonitor. Here, it's used to configure Prometheus to scrape the database's metrics endpoint 
+# than a ServiceMonitor. Here, it's used to configure Prometheus to scrape the database's metrics endpoint
 # of the managed PostgreSQL database setup in the first stack.
 resource "kubernetes_manifest" "adservice_database_scrape_config" {
-  manifest = {
-    apiVersion = "monitoring.coreos.com/v1alpha1"
-    kind       = "ScrapeConfig"
-    metadata = {
-      name      = "adservice-database"
-      namespace = kubernetes_namespace_v1.demo.metadata[0].name
-      labels = {
-        # Label used to discover ScrapeConfigs matching the name of helm_release
-        release = "kube-prometheus-stack"
-      }
-    }
-    spec = {
-      jobName = "adservice-database"
-      scheme  = "HTTPS"
-      tlsConfig = {
-        ca = {
-          secret = {
-            name = "adservice-database"
-            key  = "ca-cert"
-          }
-        }
-      }
-      metricsPath    = "/metrics"
-      scrapeInterval = "30s"
-      staticConfigs = [
-        {
-          targets = [
-            split("/", data.digitalocean_database_cluster.adservice.metrics_endpoints[0])[2]
-          ]
-        }
-      ]
-      # References to the adservice-database secret to get the username and password to connect to the metrics endpoint
-      basicAuth = {
-        username = {
-          name = "adservice-database"
-          key  = "metrics-username"
-        }
-        password = {
-          name = "adservice-database"
-          key  = "metrics-password"
-        }
-      }
-    }
-  }
+  manifest = yamldecode(templatefile("${path.module}/../../k8s/environment/scrapeconfig-adservice-db.yaml", {
+    namespace        = kubernetes_namespace_v1.demo.metadata[0].name
+    metrics_endpoint = split("/", data.digitalocean_database_cluster.adservice.metrics_endpoints[0])[2]
+  }))
 }
 
 # Deploys the Prometheus PostgreSQL Exporter using its Helm chart.
@@ -269,50 +197,10 @@ resource "kubernetes_secret_v1" "cart_database" {
 # Creates a ScrapeConfig for the CartService's Valkey database, similar to the one for PostgreSQL.
 # This configures Prometheus to scrape metrics from the Valkey database's metrics endpoint.
 resource "kubernetes_manifest" "cartservice_database_scrape_config" {
-  manifest = {
-    apiVersion = "monitoring.coreos.com/v1alpha1"
-    kind       = "ScrapeConfig"
-    metadata = {
-      name      = "cartservice-database"
-      namespace = kubernetes_namespace_v1.demo.metadata[0].name
-      labels = {
-        # Label used to discover ScrapeConfigs matching the name of helm_release
-        release = "kube-prometheus-stack"
-      }
-    }
-    spec = {
-      jobName = "cartservice-database"
-      scheme  = "HTTPS"
-      tlsConfig = {
-        ca = {
-          secret = {
-            name = "cartservice-database"
-            key  = "ca-cert"
-          }
-        }
-      }
-      metricsPath    = "/metrics"
-      scrapeInterval = "30s"
-      staticConfigs = [
-        {
-          targets = [
-            split("/", data.digitalocean_database_cluster.cartservice.metrics_endpoints[0])[2]
-          ]
-        }
-      ]
-      # References to the cartservice-database secret to get the username and password to connect to the metrics endpoint
-      basicAuth = {
-        username = {
-          name = "cartservice-database"
-          key  = "metrics-username"
-        }
-        password = {
-          name = "cartservice-database"
-          key  = "metrics-password"
-        }
-      }
-    }
-  }
+  manifest = yamldecode(templatefile("${path.module}/../../k8s/environment/scrapeconfig-cartservice-db.yaml", {
+    namespace        = kubernetes_namespace_v1.demo.metadata[0].name
+    metrics_endpoint = split("/", data.digitalocean_database_cluster.cartservice.metrics_endpoints[0])[2]
+  }))
 }
 
 # Deploys the Prometheus Redis Exporter using its Helm chart.
