@@ -4,7 +4,88 @@ This Terraform module provisions a complete, highly available (HA) end-to-end co
 
 ## Architecture Overview
 
-<img src="./partner-network-connect-aws.png" width="700">
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#0069FF', 'primaryTextColor': '#333', 'primaryBorderColor': '#0069FF', 'lineColor': '#0069FF', 'secondaryColor': '#F3F5F9', 'tertiaryColor': '#fff', 'fontFamily': 'arial'}}}%%
+flowchart LR
+    subgraph Wrapper[" "]
+        direction LR
+        subgraph DO["DigitalOcean"]
+            direction TB
+
+            subgraph DOVPC["VPC"]
+                DOKS["DOKS"]
+            end
+
+            PNA["Partner Network<br/>Attachment"]
+        end
+
+        subgraph Megaport["Megaport"]
+            direction TB
+
+            subgraph RedZone["Red Zone"]
+                direction LR
+                VXC1_DO["VXC"]
+                MCR1["MCR"]
+                VXC1_AWS["VXC"]
+            end
+
+            subgraph BlueZone["Blue Zone (HA)"]
+                direction LR
+                VXC2_DO["VXC"]
+                MCR2["MCR"]
+                VXC2_AWS["VXC"]
+            end
+        end
+
+        subgraph AWS["AWS"]
+            direction TB
+
+            DXVIF["DirectConnect<br/>VIF"]
+
+            subgraph AWSVPC["VPC"]
+                EC2["EC2 Instance"]
+            end
+        end
+
+        %% Connections - Red Zone
+        DOVPC --> PNA
+        PNA --> VXC1_DO
+        VXC1_DO --> MCR1
+        MCR1 --> VXC1_AWS
+        VXC1_AWS --> DXVIF
+
+        %% Connections - Blue Zone (HA)
+        PNA --> VXC2_DO
+        VXC2_DO --> MCR2
+        MCR2 --> VXC2_AWS
+        VXC2_AWS --> DXVIF
+
+        %% AWS internal
+        DXVIF --> AWSVPC
+    end
+
+    %% Styling - Subgraphs
+    style Wrapper fill:#FFFFFF,stroke:#FFFFFF
+    style DO fill:#E5E4E4,stroke:#0069FF,stroke-width:1px,stroke-dasharray:5
+    style DOVPC fill:#C6DDFF,stroke:#0069FF,stroke-width:1px,stroke-dasharray:5
+    style Megaport fill:#FFE4C4,stroke:#0069FF,stroke-width:1px,stroke-dasharray:5
+    style RedZone fill:#FFD6E0,stroke:#0069FF,stroke-width:1px
+    style BlueZone fill:#B7EFFE,stroke:#0069FF,stroke-width:1px
+    style AWS fill:#E5E4E4,stroke:#FF9900,stroke-width:1px,stroke-dasharray:5
+    style AWSVPC fill:#C6DDFF,stroke:#FF9900,stroke-width:1px,stroke-dasharray:5
+
+    %% Styling - Components
+    style DOKS fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style PNA fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style VXC1_DO fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style MCR1 fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style VXC1_AWS fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style VXC2_DO fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style MCR2 fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style VXC2_AWS fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style DXVIF fill:#F3F5F9,stroke:#FF9900,stroke-width:2px
+    style EC2 fill:#F3F5F9,stroke:#FF9900,stroke-width:2px
+```
 
 1. **DigitalOcean Side**
     * A DigitalOcean VPC and Kubernetes cluster (DOKS).

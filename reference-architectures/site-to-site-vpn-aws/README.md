@@ -4,7 +4,60 @@ This repository provides a reference architecture and Terraform-based implementa
 
 ## Architecture Overview
 
-<img src="./site-to-site-vpn-aws.png" width="700">
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#0069FF', 'primaryTextColor': '#333', 'primaryBorderColor': '#0069FF', 'lineColor': '#0069FF', 'secondaryColor': '#F3F5F9', 'tertiaryColor': '#fff', 'fontFamily': 'arial'}}}%%
+flowchart LR
+    subgraph Wrapper[" "]
+        direction LR
+        HelmChart["vpn-route<br/>Helm Chart"]
+
+        subgraph DO["DigitalOcean"]
+            direction TB
+
+            subgraph DOVPC["VPC"]
+                direction LR
+                DOKS["DOKS"]
+                VPNGW["VPN GW<br/>Droplet"]
+            end
+        end
+
+        subgraph AWS["AWS"]
+            direction TB
+
+            S2SVPN["Site-to-Site<br/>VPN"]
+
+            subgraph AWSVPC["VPC"]
+                EC2["EC2 Instance"]
+            end
+        end
+
+        %% Helm chart configures DOKS routing
+        HelmChart -.->|configures<br/>routes| DOKS
+
+        %% Internal DO traffic
+        DOKS <--> VPNGW
+
+        %% IPSec VPN tunnel
+        VPNGW <-.->|IPSec VPN| S2SVPN
+
+        %% AWS internal with static routes
+        S2SVPN <-->|static<br/>routes| AWSVPC
+    end
+
+    %% Styling - Subgraphs
+    style Wrapper fill:#FFFFFF,stroke:#FFFFFF
+    style DO fill:#E5E4E4,stroke:#0069FF,stroke-width:1px,stroke-dasharray:5
+    style DOVPC fill:#C6DDFF,stroke:#0069FF,stroke-width:1px,stroke-dasharray:5
+    style AWS fill:#E5E4E4,stroke:#FF9900,stroke-width:1px,stroke-dasharray:5
+    style AWSVPC fill:#C6DDFF,stroke:#FF9900,stroke-width:1px,stroke-dasharray:5
+
+    %% Styling - Components
+    style HelmChart fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style DOKS fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style VPNGW fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style S2SVPN fill:#F3F5F9,stroke:#FF9900,stroke-width:2px
+    style EC2 fill:#F3F5F9,stroke:#FF9900,stroke-width:2px
+```
 
 1. **DigitalOcean Side**
     * A **VPC** with a **DigitalOcean Droplet** acting as an IPSec VPN Gateway. A **Reserved IP** is assigned to the Droplet.

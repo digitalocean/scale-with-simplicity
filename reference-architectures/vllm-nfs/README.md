@@ -4,7 +4,82 @@ This reference architecture demonstrates how to deploy vLLM on DigitalOcean Kube
 
 ## Architecture Overview
 
-<img src="./vllm-production-stack-nfs.png" width="700">
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#0069FF', 'primaryTextColor': '#333', 'primaryBorderColor': '#0069FF', 'lineColor': '#0069FF', 'secondaryColor': '#F3F5F9', 'tertiaryColor': '#fff', 'fontFamily': 'arial'}}}%%
+flowchart TB
+    subgraph Wrapper[" "]
+        direction TB
+        Internet(("Internet"))
+
+        subgraph DO["DigitalOcean Cloud"]
+            direction TB
+
+            subgraph VPC["VPC (NYC2 or ATL1)"]
+                direction TB
+
+                subgraph DOKS["DOKS Cluster"]
+                    direction TB
+
+                    subgraph MgmtPool["Management Node Pool"]
+                        direction LR
+                        MgmtNode1["Mgmt Node"]
+                        MgmtNode2["Mgmt Node"]
+                    end
+
+                    subgraph GPUPool["GPU Node Pool (H100)"]
+                        direction LR
+                        GPUNode1["GPU Node"]
+                        GPUNode2["GPU Node"]
+                    end
+
+                    subgraph vLLM["vLLM Deployment"]
+                        direction LR
+                        Gateway["Cilium Gateway"]
+                        vLLMWorker1["vLLM Worker"]
+                        vLLMWorker2["vLLM Worker"]
+                    end
+                end
+
+                subgraph Storage["Managed NFS"]
+                    NFS[("NFS Share<br/>(Model Storage)")]
+                end
+            end
+        end
+
+        %% Traffic flow
+        Internet --> Gateway
+        Gateway --> vLLMWorker1
+        Gateway --> vLLMWorker2
+
+        %% NFS mounts
+        vLLMWorker1 -.->|mount| NFS
+        vLLMWorker2 -.->|mount| NFS
+
+        %% Workers run on GPU nodes
+        GPUPool -.->|hosts| vLLM
+    end
+
+    %% Styling - Subgraphs
+    style Wrapper fill:#FFFFFF,stroke:#FFFFFF
+    style DO fill:#E5E4E4,stroke:#0069FF,stroke-width:1px,stroke-dasharray:5
+    style VPC fill:#C6DDFF,stroke:#0069FF,stroke-width:1px,stroke-dasharray:5
+    style DOKS fill:#DCD1FF,stroke:#0069FF,stroke-width:1px
+    style MgmtPool fill:#B7EFFE,stroke:#0069FF,stroke-width:1px
+    style GPUPool fill:#FFE4C4,stroke:#0069FF,stroke-width:1px
+    style vLLM fill:#B7EFFE,stroke:#0069FF,stroke-width:1px
+    style Storage fill:#F3F5F9,stroke:#0069FF,stroke-width:1px
+
+    %% Styling - Components
+    style Internet fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style MgmtNode1 fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style MgmtNode2 fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style GPUNode1 fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style GPUNode2 fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style Gateway fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style vLLMWorker1 fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style vLLMWorker2 fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style NFS fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+```
 
 1. **DigitalOcean VPC**
    * Deployed in a region with both H100 GPUs and Managed NFS (currently **NYC2** or **ATL1**)

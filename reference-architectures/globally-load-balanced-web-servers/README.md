@@ -8,7 +8,96 @@ A Terraform composition that bootstraps a **multi-region, highly available web f
 4. **DNS records** for direct regional access (e.g., `nyc3.example.com`).
 5. **Web droplets** in each region, bootstrapped with nginx + Docker and tagged for targeting by the load balancers.
 
-![architecture diagram](./globally-load-balanced-web-servers.png){width="700"}
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#0069FF', 'primaryTextColor': '#333', 'primaryBorderColor': '#0069FF', 'lineColor': '#0069FF', 'secondaryColor': '#F3F5F9', 'tertiaryColor': '#fff', 'fontFamily': 'arial'}}}%%
+flowchart TB
+    subgraph Wrapper[" "]
+        direction TB
+        DNS(("DNS"))
+        User(("User"))
+
+        User --> GLB
+        DNS -.-> GLB
+
+        subgraph DO["DigitalOcean Cloud"]
+            direction TB
+
+            GLB["Global<br/>Load Balancer"]
+
+            subgraph Region1["Region 1"]
+                direction TB
+                RLB1["Regional<br/>Load Balancer"]
+                subgraph VPC1["VPC"]
+                    direction LR
+                    Web1A["Web"]
+                    Web1B["Web"]
+                end
+            end
+
+            subgraph Region2["Region 2"]
+                direction TB
+                RLB2["Regional<br/>Load Balancer"]
+                subgraph VPC2["VPC"]
+                    direction LR
+                    Web2A["Web"]
+                    Web2B["Web"]
+                end
+            end
+
+            subgraph Region3["Region 3"]
+                direction TB
+                RLB3["Regional<br/>Load Balancer"]
+                subgraph VPC3["VPC"]
+                    direction LR
+                    Web3A["Web"]
+                    Web3B["Web"]
+                end
+            end
+        end
+
+        %% GLB to Regional LBs
+        GLB --> RLB1
+        GLB --> RLB2
+        GLB --> RLB3
+
+        %% Regional LBs to Web Droplets
+        RLB1 --> Web1A
+        RLB1 --> Web1B
+        RLB2 --> Web2A
+        RLB2 --> Web2B
+        RLB3 --> Web3A
+        RLB3 --> Web3B
+
+        %% VPC Peering
+        VPC1 <-.->|VPC<br/>Peering| VPC2
+        VPC2 <-.->|VPC<br/>Peering| VPC3
+        VPC1 <-.->|VPC<br/>Peering| VPC3
+    end
+
+    %% Styling - Subgraphs
+    style Wrapper fill:#FFFFFF,stroke:#FFFFFF
+    style DO fill:#E5E4E4,stroke:#0069FF,stroke-width:1px,stroke-dasharray:5
+    style Region1 fill:#F3F5F9,stroke:#0069FF,stroke-width:1px
+    style Region2 fill:#F3F5F9,stroke:#0069FF,stroke-width:1px
+    style Region3 fill:#F3F5F9,stroke:#0069FF,stroke-width:1px
+    style VPC1 fill:#C6DDFF,stroke:#0069FF,stroke-width:1px,stroke-dasharray:5
+    style VPC2 fill:#C6DDFF,stroke:#0069FF,stroke-width:1px,stroke-dasharray:5
+    style VPC3 fill:#C6DDFF,stroke:#0069FF,stroke-width:1px,stroke-dasharray:5
+
+    %% Styling - Components
+    style DNS fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style User fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style GLB fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style RLB1 fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style RLB2 fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style RLB3 fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style Web1A fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style Web1B fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style Web2A fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style Web2B fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style Web3A fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style Web3B fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+```
 
 ## How it fits together
 

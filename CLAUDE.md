@@ -428,6 +428,38 @@ flowchart TB
     ...
 ```
 
+#### Dark Mode Support
+
+To ensure diagrams display correctly on dark backgrounds (e.g., GitHub dark mode), wrap all diagram content in an outer `Wrapper` subgraph with a white background. This provides a consistent light background for all elements including connecting lines between subgraphs:
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#0069FF', 'primaryTextColor': '#333', 'primaryBorderColor': '#0069FF', 'lineColor': '#0069FF', 'secondaryColor': '#F3F5F9', 'tertiaryColor': '#fff', 'fontFamily': 'arial'}}}%%
+flowchart TB
+    subgraph Wrapper[" "]
+        direction TB
+        %% All diagram content goes inside the Wrapper
+
+        Internet(("Internet"))
+
+        subgraph DO["DigitalOcean Cloud"]
+            %% ... nested subgraphs and nodes
+        end
+
+        %% Connections between elements
+        Internet --> DO
+    end
+
+    %% Styling - include Wrapper with white fill and stroke
+    style Wrapper fill:#FFFFFF,stroke:#FFFFFF
+    style DO fill:#E5E4E4,stroke:#0069FF,stroke-width:1px,stroke-dasharray:5
+```
+
+**Key points:**
+- Use `subgraph Wrapper[" "]` with a space as the label to create an invisible container
+- Place ALL nodes, subgraphs, and connections inside the Wrapper
+- Style the Wrapper with `fill:#FFFFFF,stroke:#FFFFFF` to create a seamless white background
+- Styling directives can remain outside the Wrapper subgraph
+
 #### Color Palette
 
 **Subgraph Background Colors:**
@@ -565,76 +597,81 @@ CertManager -.->|TLS certs| Gateway
 ### Diagram Best Practices
 
 1. **Start with theme init** - Always include the `%%{init:...}%%` directive
-2. **Define traffic flow first** - Establish the main flow early to guide layout
-3. **Group by function** - Use subgraphs for App, Platform, Observability, Databases
-4. **Use direction directives** - Control layout within subgraphs
-5. **Label connections** - Use descriptive labels like `|rsyslog/TLS|`
-6. **Style at the end** - Group all `style` directives at the bottom
-7. **Use `<br/>` for clarity** - Multi-line labels improve readability
+2. **Wrap in Wrapper subgraph** - Use `subgraph Wrapper[" "]` with white fill for dark mode support
+3. **Define traffic flow first** - Establish the main flow early to guide layout
+4. **Group by function** - Use subgraphs for App, Platform, Observability, Databases
+5. **Use direction directives** - Control layout within subgraphs
+6. **Label connections** - Use descriptive labels like `|rsyslog/TLS|`
+7. **Style at the end** - Group all `style` directives at the bottom
+8. **Use `<br/>` for clarity** - Multi-line labels improve readability
 
 ### Example Complete Diagram
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#0069FF', 'primaryTextColor': '#333', 'primaryBorderColor': '#0069FF', 'lineColor': '#0069FF', 'secondaryColor': '#F3F5F9', 'tertiaryColor': '#fff', 'fontFamily': 'arial'}}}%%
 flowchart TB
-    %% Define traffic flow first
-    Internet(("Internet")) --> LB["Load Balancer"] --> Gateway
+    subgraph Wrapper[" "]
+        direction TB
+        %% Define traffic flow first
+        Internet(("Internet")) --> LB["Load Balancer"] --> Gateway
 
-    subgraph DO["DigitalOcean Cloud"]
-        direction LR
+        subgraph DO["DigitalOcean Cloud"]
+            direction LR
 
-        subgraph VPC["VPC (Private Network)"]
-            direction TB
+            subgraph VPC["VPC (Private Network)"]
+                direction TB
 
-            subgraph DOKS["DOKS Kubernetes Cluster"]
-                direction LR
-
-                subgraph App["Demo Application"]
-                    direction TB
-                    Gateway["Cilium Gateway"]
-                    Frontend["Frontend"]
-                    Backend["Backend Service"]
-                end
-
-                subgraph Platform["Platform Services"]
+                subgraph DOKS["DOKS Kubernetes Cluster"]
                     direction LR
-                    CertManager["cert-manager"]
-                    ExtDNS["ExternalDNS"]
+
+                    subgraph App["Demo Application"]
+                        direction TB
+                        Gateway["Cilium Gateway"]
+                        Frontend["Frontend"]
+                        Backend["Backend Service"]
+                    end
+
+                    subgraph Platform["Platform Services"]
+                        direction LR
+                        CertManager["cert-manager"]
+                        ExtDNS["ExternalDNS"]
+                    end
+
+                    subgraph Obs["Observability"]
+                        direction TB
+                        Prometheus["Prometheus"]
+                        Grafana["Grafana"]
+                    end
                 end
 
-                subgraph Obs["Observability"]
-                    direction TB
-                    Prometheus["Prometheus"]
-                    Grafana["Grafana"]
+                subgraph DBaaS["Managed Databases"]
+                    direction LR
+                    PostgreSQL[("PostgreSQL<br/>(App DB)")]
                 end
             end
 
-            subgraph DBaaS["Managed Databases"]
-                direction LR
-                PostgreSQL[("PostgreSQL<br/>(App DB)")]
+            subgraph Storage["Spaces Object Storage"]
+                Backups[("Backups")]
             end
         end
 
-        subgraph Storage["Spaces Object Storage"]
-            Backups[("Backups")]
-        end
+        %% Traffic flow
+        Gateway --> Frontend
+        Frontend --> Backend
+        Backend --> PostgreSQL
+
+        %% Platform connections
+        CertManager -.->|TLS certs| Gateway
+        ExtDNS -.->|DNS records| LB
+
+        %% Observability
+        Backend -->|metrics| Prometheus
+        Prometheus --> Grafana
+        Backend -.->|backups| Backups
     end
 
-    %% Traffic flow
-    Gateway --> Frontend
-    Frontend --> Backend
-    Backend --> PostgreSQL
-
-    %% Platform connections
-    CertManager -.->|TLS certs| Gateway
-    ExtDNS -.->|DNS records| LB
-
-    %% Observability
-    Backend -->|metrics| Prometheus
-    Prometheus --> Grafana
-    Backend -.->|backups| Backups
-
-    %% Styling - Subgraphs
+    %% Styling - Subgraphs (Wrapper provides white background for dark mode)
+    style Wrapper fill:#FFFFFF,stroke:#FFFFFF
     style DO fill:#E5E4E4,stroke:#0069FF,stroke-width:1px,stroke-dasharray:5
     style VPC fill:#C6DDFF,stroke:#0069FF,stroke-width:1px,stroke-dasharray:5
     style DOKS fill:#DCD1FF,stroke:#0069FF,stroke-width:1px,stroke-dasharray:5
