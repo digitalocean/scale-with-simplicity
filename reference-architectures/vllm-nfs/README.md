@@ -263,6 +263,8 @@ curl -s http://${GATEWAY_IP}/v1/chat/completions \
 |------|-------------|------|---------|----------|
 | `model_id` | HuggingFace model ID to download and serve | `string` | `Qwen/Qwen2.5-0.5B-Instruct` | no |
 | `hf_token` | HuggingFace API token for gated models | `string` | `""` | no |
+| `replicas` | Number of vLLM replicas (set > 1 for HA) | `number` | `1` | no |
+| `quantization` | Quantization method (e.g., `fp8`) | `string` | `""` | no |
 
 ## Outputs
 
@@ -292,6 +294,8 @@ curl -s http://${GATEWAY_IP}/v1/chat/completions \
 | `gateway_name` | Name of the Gateway resource for external access |
 | `model_id` | The HuggingFace model ID being served |
 | `model_name` | The model name used for inference requests |
+| `replicas` | Number of vLLM replicas deployed |
+| `quantization` | Quantization method used for model inference |
 
 ## Cleanup
 
@@ -340,6 +344,67 @@ This reference architecture uses simple round-robin load balancing via Gateway A
 * **Larger Models**: For production workloads, use a more capable model than the default Qwen2.5-0.5B-Instruct
 
 These optimizations can significantly improve throughput and reduce latency for multi-replica deployments.
+
+## High Availability Configuration for Upgrade Testing
+
+This reference architecture includes built-in support for testing zero-downtime upgrades with multiple replicas. The deployment incorporates several best practices that ensure service continuity during rolling updates and node maintenance:
+
+### Built-in Resilience Features
+
+| Feature | Description |
+|---------|-------------|
+| **PodDisruptionBudget** | Limits voluntary disruptions to one pod at a time, ensuring service availability during node drains |
+| **PreStop Hook** | Drains in-flight requests before pod termination by polling vLLM metrics for running/waiting requests |
+| **Pod Anti-Affinity** | Spreads replicas across different nodes, preventing single node failures from affecting all replicas |
+| **Startup Probe** | Allows up to 120 seconds for model loading before readiness/liveness probes begin |
+| **Graceful Termination** | 70-second termination grace period gives time for request draining |
+| **Rolling Update Strategy** | `maxSurge: 0` and `maxUnavailable: 1` ensure controlled pod replacement for GPU-constrained clusters |
+
+### Deploying with Multiple Replicas
+
+To test high availability and upgrade resilience, deploy with multiple GPU nodes and replicas:
+
+**Stack 1 (terraform/1-infra):**
+```hcl
+name_prefix         = "vllm-ha-test"
+region              = "nyc2"
+vpc_cidr            = "10.200.0.0/22"
+doks_cluster_subnet = "172.16.0.0/20"
+doks_service_subnet = "192.168.0.0/22"
+nfs_size_gb         = 1000
+gpu_node_count      = 3  # One node per replica for anti-affinity
+```
+
+**Stack 2 (terraform/2-vllm):**
+```hcl
+model_id     = "Qwen/Qwen2.5-72B-Instruct"
+replicas     = 3
+quantization = "fp8"  # FP8 quantization for 72B model on 80GB GPU
+```
+
+### Testing Upgrade Resilience
+
+With the HA configuration deployed, you can validate zero-downtime behavior:
+
+1. **Rolling Update Test**: Update the vLLM image version and observe pods replacing one at a time
+   ```bash
+   kubectl set image deployment/vllm vllm=vllm/vllm-openai:v0.x.x -n vllm
+   kubectl rollout status deployment/vllm -n vllm
+   ```
+
+2. **Node Drain Test**: Drain a GPU node and verify the PDB prevents service disruption
+   ```bash
+   kubectl drain <node-name> --ignore-daemonsets --delete-emptydir-data
+   ```
+
+3. **Traffic During Upgrades**: Run continuous traffic and verify no failed requests
+   ```bash
+   GATEWAY_IP=$(kubectl get gateway vllm-gateway -n vllm -o jsonpath='{.status.addresses[0].value}')
+   while true; do
+     curl -s -o /dev/null -w "%{http_code}\n" http://${GATEWAY_IP}/v1/models
+     sleep 1
+   done
+   ```
 
 ## Troubleshooting
 

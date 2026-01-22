@@ -10,3 +10,15 @@ variable "hf_token" {
   sensitive   = true
   default     = ""
 }
+
+variable "replicas" {
+  description = "Number of vLLM replicas. Set > 1 for high availability with multiple GPU nodes."
+  type        = number
+  default     = 1
+}
+
+variable "quantization" {
+  description = "Quantization method for model inference (e.g., 'fp8' for FP8 quantization)."
+  type        = string
+  default     = "fp8"
+}

@@ -41,9 +41,17 @@ variable "doks_control_plane_ha" {
   description = "Enable high availability for DOKS control plane"
 }
 
+variable "doks_surge_upgrade" {
+  type = bool
+  # When enabled additional nodes are added to a node pool prior to the upgrade. 
+  # This is not always desirable or possible when using GPU systems, especially when you have a contracted amount.
+  default     = false
+  description = "Enable Surge Upgrades"
+}
+
 variable "management_node_pool_min_nodes" {
   type        = number
-  default     = 2
+  default     = 1
   description = "Minimum number of nodes in management node pool"
 }
 

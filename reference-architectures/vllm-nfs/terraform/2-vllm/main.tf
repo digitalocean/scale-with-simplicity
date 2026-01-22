@@ -1,8 +1,9 @@
 locals {
   # Values from Stack 1 remote state
-  nfs_host       = data.terraform_remote_state.infra.outputs.nfs_host
-  nfs_mount_path = data.terraform_remote_state.infra.outputs.nfs_mount_path
-  nfs_size_gb    = data.terraform_remote_state.infra.outputs.nfs_size_gb
+  nfs_host           = data.terraform_remote_state.infra.outputs.nfs_host
+  nfs_mount_path     = data.terraform_remote_state.infra.outputs.nfs_mount_path
+  nfs_size_gb        = data.terraform_remote_state.infra.outputs.nfs_size_gb
+  gpu_node_pool_name = data.terraform_remote_state.infra.outputs.gpu_node_pool_name
 
   # Extract model name from model_id (e.g., "Qwen/Qwen2.5-0.5B-Instruct" -> "Qwen2.5-0.5B-Instruct")
   model_name = element(split("/", var.model_id), 1)
@@ -73,27 +74,37 @@ resource "kubernetes_manifest" "model_download_job" {
 # 6. vLLM Deployment
 resource "kubernetes_manifest" "vllm_deployment" {
   manifest = yamldecode(templatefile("${path.module}/../../k8s/vllm-deployment.yaml", {
-    model_name = local.model_name
+    model_name         = local.model_name
+    replicas           = var.replicas
+    quantization       = var.quantization
+    gpu_node_pool_name = local.gpu_node_pool_name
   }))
 
   depends_on = [kubernetes_manifest.model_download_job]
 }
 
-# 7. ClusterIP Service for vLLM
+# 7. PodDisruptionBudget for graceful disruption handling
+resource "kubernetes_manifest" "pdb" {
+  manifest = yamldecode(file("${path.module}/../../k8s/pdb.yaml"))
+
+  depends_on = [kubernetes_manifest.namespace]
+}
+
+# 8. ClusterIP Service for vLLM
 resource "kubernetes_manifest" "vllm_service" {
   manifest = yamldecode(file("${path.module}/../../k8s/vllm-service.yaml"))
 
   depends_on = [kubernetes_manifest.vllm_deployment]
 }
 
-# 8. Gateway for external access via Cilium Gateway API
+# 9. Gateway for external access via Cilium Gateway API
 resource "kubernetes_manifest" "gateway" {
   manifest = yamldecode(file("${path.module}/../../k8s/gateway.yaml"))
 
   depends_on = [kubernetes_manifest.vllm_service]
 }
 
-# 9. HTTPRoute to route traffic to vLLM service
+# 10. HTTPRoute to route traffic to vLLM service
 resource "kubernetes_manifest" "httproute" {
   manifest = yamldecode(file("${path.module}/../../k8s/httproute.yaml"))
 
