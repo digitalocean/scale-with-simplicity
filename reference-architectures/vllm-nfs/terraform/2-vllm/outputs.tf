@@ -27,3 +27,13 @@ output "model_name" {
   description = "The model name used for inference requests"
   value       = local.model_name
 }
+
+output "replicas" {
+  description = "Number of vLLM replicas deployed"
+  value       = var.replicas
+}
+
+output "quantization" {
+  description = "Quantization method used for model inference"
+  value       = var.quantization
+}

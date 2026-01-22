@@ -6,9 +6,9 @@ metadata:
   labels:
     app: vllm
 spec:
-  replicas: 1
+  replicas: ${replicas}
   # maxSurge: 0 ensures old pod is deleted before new pod is created,
-  # which is required because each node has only one GPU.
+  # required for clusters with no excess GPU capacity.
   # maxUnavailable: 1 ensures only one pod is replaced at a time.
   strategy:
     type: RollingUpdate
@@ -23,10 +23,28 @@ spec:
       labels:
         app: vllm
     spec:
+      terminationGracePeriodSeconds: 120
       tolerations:
         - key: nvidia.com/gpu
           operator: Exists
           effect: NoSchedule
+      nodeSelector:
+        doks.digitalocean.com/node-pool: ${gpu_node_pool_name}
+      # Pod anti-affinity ensures each replica runs on a different node.
+      # requiredDuringScheduling is a hard constraint - pods will remain
+      # Pending if insufficient nodes are available.
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: vllm
+              topologyKey: kubernetes.io/hostname
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
       containers:
         - name: vllm
           image: vllm/vllm-openai:latest
@@ -35,10 +53,27 @@ spec:
             - /models/${model_name}
             - --served-model-name
             - ${model_name}
+            # Quantization reduces memory usage while preserving inference quality.
+            # FP8 is hardware-accelerated on H100/H200.
+            - --quantization
+            - ${quantization}
+            # Recommended when loading models from NFS. Reads the entire model into
+            # CPU memory first before transferring to GPU, rather than memory-mapping
+            # the file. This avoids random I/O patterns that perform poorly over NFS.
+            - --safetensors-load-strategy
+            - eager
           ports:
             - containerPort: 8000
               name: http
           env:
+            # USER and HOME are required when running as an arbitrary UID that
+            # doesn't exist in /etc/passwd. Python's getpass.getuser() checks
+            # USER before falling back to passwd lookup, and PyTorch/vLLM use
+            # HOME for cache directories.
+            - name: USER
+              value: "vllm"
+            - name: HOME
+              value: "/tmp"
             - name: VLLM_PORT
               value: "8000"
             # HF_TOKEN is optional - only needed for gated/private models.
@@ -54,27 +89,94 @@ spec:
             # by the model-download job, so online access is not needed.
             - name: HF_HUB_OFFLINE
               value: "1"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           volumeMounts:
-            - name: model-cache
+            - name: models
               mountPath: /models
+            # PyTorch/vLLM use shared memory for inter-process communication.
+            # Default /dev/shm is 64MB which can cause failures under load.
+            - name: shm
+              mountPath: /dev/shm
           resources:
+            # CPU/memory requests omitted because pod anti-affinity guarantees
+            # one vLLM pod per node, giving each pod access to all node resources.
             limits:
+              # Adjust GPU count based on model requirements and available hardware.
               nvidia.com/gpu: 1
             requests:
               nvidia.com/gpu: 1
+          # Startup probe: Allows time for initial model loading without affecting
+          # liveness/readiness probe settings. Both probes are gated until startup
+          # succeeds. Cold starts include model weight loading, FP8 quantization,
+          # and torch.compile graph compilation.
+          #
+          # Tuning guidance:
+          # - initialDelaySeconds: Set to your expected cold start time, or 1-2
+          #   probe intervals before it, in case startup completes faster than usual.
+          # - failureThreshold: Provides buffer for slower-than-expected starts.
+          #   Set to 50-100% of your cold start time to avoid restarting pods that
+          #   are still loading. Example: 120s delay + (12 × 10s) = 240s total window.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 120
+            periodSeconds: 10
+            failureThreshold: 12
+          # Readiness probe: Controls when pod receives traffic from Services.
+          # Runs only after startup probe succeeds.
+          # periodSeconds: 5 enables fast detection of readiness changes,
+          # allowing load balancers to quickly route away during drains.
           readinessProbe:
             httpGet:
               path: /health
               port: 8000
-            initialDelaySeconds: 30
-            periodSeconds: 10
+            periodSeconds: 5
+          # Liveness probe: Restarts pod if it becomes unresponsive.
+          # Runs only after startup probe succeeds.
+          # - periodSeconds: 10 with failureThreshold: 3 means pod must be
+          #   unresponsive for 30s before restart, providing tolerance for
+          #   transient resource pressure and avoiding cascading failures
+          # - Readiness probe will stop traffic after ~15s; liveness allows
+          #   additional time before paying the cost of a full model reload
           livenessProbe:
             httpGet:
               path: /health
               port: 8000
-            initialDelaySeconds: 60
-            periodSeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - |
+                    # Drain in-flight requests before termination.
+                    # This script will be killed when terminationGracePeriodSeconds (120s) expires.
+                    sleep 5
+                    while true; do
+                      RUNNING=$(curl -s localhost:8000/metrics | grep '^vllm:num_requests_running' | awk '{print $2}' | cut -d. -f1)
+                      WAITING=$(curl -s localhost:8000/metrics | grep '^vllm:num_requests_waiting' | awk '{print $2}' | cut -d. -f1)
+                      RUNNING=$${RUNNING:-0}
+                      WAITING=$${WAITING:-0}
+                      if [ "$RUNNING" = "0" ] && [ "$WAITING" = "0" ]; then
+                        echo "Drained, ready to terminate"
+                        exit 0
+                      fi
+                      echo "Draining: running=$RUNNING waiting=$WAITING"
+                      sleep 2
+                    done
       volumes:
-        - name: model-cache
+        - name: models
           persistentVolumeClaim:
             claimName: vllm-models-pvc
+        # Expanded shared memory for PyTorch/vLLM inter-process communication.
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Gi

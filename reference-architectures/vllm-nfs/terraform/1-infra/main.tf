@@ -48,6 +48,7 @@ resource "digitalocean_kubernetes_cluster" "vllm" {
   service_subnet                   = var.doks_service_subnet
   destroy_all_associated_resources = true
   ha                               = var.doks_control_plane_ha
+  surge_upgrade                    = var.doks_surge_upgrade
   tags                             = local.tags
 
   # Management node pool for non-GPU workloads (router, system services)

@@ -1,0 +1,13 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: vllm-pdb
+  namespace: vllm
+spec:
+  # maxUnavailable: 1 ensures at least (replicas - 1) pods remain available
+  # during voluntary disruptions (node drains, cluster upgrades).
+  # Works with the Deployment's maxUnavailable: 1 to serialize pod replacements.
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: vllm
