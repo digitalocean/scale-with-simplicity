@@ -1,0 +1,8 @@
+exclude_projects:
+  - Infra
+
+protected_resources:
+  spaces-key:
+    - name: scale-with-simplicity-pipeline
+  registry:
+    - name: scale-with-simplicity-test

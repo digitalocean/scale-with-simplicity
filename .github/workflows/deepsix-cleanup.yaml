@@ -1,0 +1,22 @@
+name: deepsix Cleanup
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    name: Clean up DigitalOcean resources
+    runs-on: ubuntu-latest
+    container:
+      image: registry.digitalocean.com/scale-with-simplicity-test/terraform-test:latest
+      credentials:
+        username: solutions@digitalocean.com
+        password: ${{ secrets.TEST_DIGITALOCEAN_ACCESS_TOKEN }}
+    env:
+      DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.TEST_DIGITALOCEAN_ACCESS_TOKEN }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Run deepsix cleanup
+        run: deepsix --all --force
