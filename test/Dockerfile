@@ -35,7 +35,7 @@ RUN curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubec
 
 # Install deepsix (from private GitHub release)
 ARG GITHUB_TOKEN
-ARG DEEPSIX_VERSION=v0.9.1
+ARG DEEPSIX_VERSION=v0.9.2
 RUN ASSET_URL=$(curl -sL \
       -H "Authorization: token ${GITHUB_TOKEN}" \
       -H "Accept: application/vnd.github.v3+json" \
