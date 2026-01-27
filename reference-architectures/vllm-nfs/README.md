@@ -10,6 +10,7 @@ flowchart TB
     subgraph Wrapper[" "]
         direction TB
         Internet(("Internet"))
+        HuggingFace(("HuggingFace"))
 
         subgraph DO["DigitalOcean Cloud"]
             direction TB
@@ -22,17 +23,10 @@ flowchart TB
 
                     subgraph MgmtPool["Management Node Pool"]
                         direction LR
-                        MgmtNode1["Mgmt Node"]
-                        MgmtNode2["Mgmt Node"]
+                        DownloadJob["Download Job"]
                     end
 
                     subgraph GPUPool["GPU Node Pool (H100)"]
-                        direction LR
-                        GPUNode1["GPU Node"]
-                        GPUNode2["GPU Node"]
-                    end
-
-                    subgraph vLLM["vLLM Deployment"]
                         direction LR
                         Gateway["Cilium Gateway"]
                         vLLMWorker1["vLLM Worker"]
@@ -55,8 +49,9 @@ flowchart TB
         vLLMWorker1 -.->|mount| NFS
         vLLMWorker2 -.->|mount| NFS
 
-        %% Workers run on GPU nodes
-        GPUPool -.->|hosts| vLLM
+        %% Model download
+        HuggingFace -.->|model weights| DownloadJob
+        DownloadJob -.->|download| NFS
     end
 
     %% Styling - Subgraphs
@@ -66,15 +61,12 @@ flowchart TB
     style DOKS fill:#DCD1FF,stroke:#0069FF,stroke-width:1px
     style MgmtPool fill:#B7EFFE,stroke:#0069FF,stroke-width:1px
     style GPUPool fill:#FFE4C4,stroke:#0069FF,stroke-width:1px
-    style vLLM fill:#B7EFFE,stroke:#0069FF,stroke-width:1px
     style Storage fill:#F3F5F9,stroke:#0069FF,stroke-width:1px
 
     %% Styling - Components
     style Internet fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
-    style MgmtNode1 fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
-    style MgmtNode2 fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
-    style GPUNode1 fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
-    style GPUNode2 fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style HuggingFace fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style DownloadJob fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
     style Gateway fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
     style vLLMWorker1 fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
     style vLLMWorker2 fill:#F3F5F9,stroke:#0069FF,stroke-width:2px

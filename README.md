@@ -15,6 +15,7 @@ This repo contains reference architectures developed by DigitalOcean to help use
 | [NAT Gateway](./reference-architectures/nat-gateway)                                               | Route all egress traffic from DOKS cluster and Droplets through a NAT Gateway, providing a single static IP for outbound connectivity | Yes                 | Coming Soon |
 | [Partner Network Connect with AWS](./reference-architectures/partner-network-connect-aws)          | End-to-End connection between DO VPC and AWS VPC using Partner Network Connect with HA support                                      | No                  | Coming Soon |
 | [Site to Site VPN with AWS](./reference-architectures/site-to-site-vpn-aws)                        | IPSec VPN Gateway Droplet connecting DO VPC and DOKS cluster with AWS VPC                                                           | No                  | [Watch Tutorial](https://youtu.be/TCELPPiaI20?feature=shared) |
+| [vLLM on DOKS with Managed NFS](./reference-architectures/vllm-nfs)                               | vLLM inference on DOKS using Managed NFS for shared model storage across GPU workers                                                | No                  | Coming Soon |
 
 Reference architectures deployed entirely on DigitalOcean are validated periodically (typically daily) to ensure they work as intended. Multi-cloud architectures are not validated via periodic testing but are verified using static analysis and unit testing when updates are made.
 
