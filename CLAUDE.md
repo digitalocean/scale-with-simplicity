@@ -967,6 +967,55 @@ jobs:
 
 Both workflows use a shared Docker container image with Terraform, Go, and test tools pre-installed.
 
+## Resource Cleanup (deepsix)
+
+[deepsix](https://github.com/DO-Solutions/deepsix) runs nightly to clean up orphaned DigitalOcean resources left behind by failed or interrupted integration tests.
+
+### Configuration (`.deepsix.yaml`)
+
+The repo-root config file controls what deepsix skips:
+
+```yaml
+exclude_projects:
+  - Infra
+
+protected_resources:
+  spaces-key:
+    - name: scale-with-simplicity-pipeline
+  registry:
+    - name: scale-with-simplicity-test
+```
+
+- **`exclude_projects`** — Projects that are never touched. The `Infra` project holds long-lived infrastructure and must remain intact.
+- **`protected_resources`** — Individual resources that must not be deleted, keyed by resource type. The Spaces key (`scale-with-simplicity-pipeline`) and the DOCR registry (`scale-with-simplicity-test`) are protected because they are shared by CI pipelines.
+
+### Cleanup Workflow (`.github/workflows/deepsix-cleanup.yaml`)
+
+Runs daily at midnight UTC (`0 0 * * *`) and can also be triggered manually via `workflow_dispatch`. The job executes inside the test container and runs:
+
+```bash
+deepsix --all --force
+```
+
+This deletes all non-protected resources across every non-excluded project. The workflow requires `DIGITALOCEAN_ACCESS_TOKEN`, `SPACES_ACCESS_KEY_ID`, and `SPACES_SECRET_ACCESS_KEY` secrets.
+
+### Updating deepsix
+
+The deepsix binary is installed in the test container from a private GitHub release (`DO-Solutions/deepsix`). To update:
+
+1. Bump `DEEPSIX_VERSION` in `test/Dockerfile` (e.g., `ARG DEEPSIX_VERSION=v0.9.2`)
+2. Rebuild the container:
+   ```bash
+   docker build --build-arg GITHUB_TOKEN=$GITHUB_TOKEN \
+     -t registry.digitalocean.com/scale-with-simplicity-test/terraform-test:latest test/
+   ```
+3. Verify the version: `docker run --rm <image> deepsix --version`
+4. Push to DOCR:
+   ```bash
+   doctl registry login
+   docker push registry.digitalocean.com/scale-with-simplicity-test/terraform-test:latest
+   ```
+
 ## Adding a New Reference Architecture
 
 1. Create directory structure under `reference-architectures/<ra-slug>/`
