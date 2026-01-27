@@ -15,6 +15,8 @@ jobs:
         password: ${{ secrets.TEST_DIGITALOCEAN_ACCESS_TOKEN }}
     env:
       DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.TEST_DIGITALOCEAN_ACCESS_TOKEN }}
+      SPACES_ACCESS_KEY_ID: ${{ secrets.TEST_SPACES_ACCESS_KEY_ID }}
+      SPACES_SECRET_ACCESS_KEY: ${{ secrets.TEST_SPACES_SECRET_ACCESS_KEY }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
