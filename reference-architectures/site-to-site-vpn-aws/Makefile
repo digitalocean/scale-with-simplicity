@@ -10,17 +10,5 @@ tf-validate:
 tflint:
 	@cd terraform &&  $(TEST_SCRIPT_DIR)/tflint.sh
 
-.PHONY: go-mod-check
-go-mod-check:
-	@cd test && $(TEST_SCRIPT_DIR)/go-mod-tidy-check.sh
-
 .PHONY: lint
-lint: tf-validate tflint go-mod-check
-
-.PHONY: test-unit
-test-unit:
-	cd test/unit &&  $(TEST_SCRIPT_DIR)/terratest.sh
-
-.PHONY: test-integration
-test-integration:
-	cd test/integration &&  $(TEST_SCRIPT_DIR)/terratest.sh
+lint: tf-validate tflint

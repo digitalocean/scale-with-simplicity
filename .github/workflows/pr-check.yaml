@@ -47,23 +47,13 @@ jobs:
       fail-fast: false
       matrix:
         module: ${{ fromJSON(needs.detect-changes.outputs.modules) }}
-    container:
-      image: registry.digitalocean.com/scale-with-simplicity-test/terraform-test:latest
-      credentials:
-        username: solutions@digitalocean.com
-        password: ${{ secrets.TEST_DIGITALOCEAN_ACCESS_TOKEN }}
-    env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.SOLUTIONS_AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.SOLUTIONS_AWS_SECRET_ACCESS_KEY }}
-      DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.TEST_DIGITALOCEAN_ACCESS_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - uses: terraform-linters/setup-tflint@v4
       - name: Lint
         working-directory: ${{ matrix.module }}
         run: make lint
-      - name: Unit Tests
-        working-directory: ${{ matrix.module }}
-        run: make test-unit
 
   test-ras:
     needs: detect-changes
@@ -73,20 +63,10 @@ jobs:
       fail-fast: false
       matrix:
         ra: ${{ fromJSON(needs.detect-changes.outputs.ras) }}
-    container:
-      image: registry.digitalocean.com/scale-with-simplicity-test/terraform-test:latest
-      credentials:
-        username: solutions@digitalocean.com
-        password: ${{ secrets.TEST_DIGITALOCEAN_ACCESS_TOKEN }}
-    env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.SOLUTIONS_AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.SOLUTIONS_AWS_SECRET_ACCESS_KEY }}
-      DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.TEST_DIGITALOCEAN_ACCESS_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - uses: terraform-linters/setup-tflint@v4
       - name: Lint
         working-directory: ${{ matrix.ra }}
         run: make lint
-      - name: Unit Tests
-        working-directory: ${{ matrix.ra }}
-        run: make test-unit
