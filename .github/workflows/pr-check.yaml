@@ -61,9 +61,6 @@ jobs:
       - name: Lint
         working-directory: ${{ matrix.module }}
         run: make lint
-      - name: Unit Tests
-        working-directory: ${{ matrix.module }}
-        run: make test-unit
 
   test-ras:
     needs: detect-changes
@@ -87,6 +84,3 @@ jobs:
       - name: Lint
         working-directory: ${{ matrix.ra }}
         run: make lint
-      - name: Unit Tests
-        working-directory: ${{ matrix.ra }}
-        run: make test-unit

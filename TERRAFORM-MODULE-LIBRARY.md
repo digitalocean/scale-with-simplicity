@@ -41,13 +41,12 @@ module "multi_region_vpc" {
 
 The relative path depends on your Terraform directory depth. For reference architectures at `reference-architectures/<ra-slug>/terraform/`, the path is `../../../modules/<module-name>`.
 
-## Running Module Tests
+## Validating Modules
 
-Each module includes unit tests:
+Each module includes linting and validation:
 
 ```bash
 cd modules/<module-name>
 make lint        # Run terraform validate, fmt, tflint
-make test-unit   # Run unit tests
 ```
 

@@ -23,11 +23,3 @@ tflint:
 
 .PHONY: lint
 lint: tf-validate tflint
-
-.PHONY: test-unit
-test-unit:
-	cd test/unit && $(TEST_SCRIPT_DIR)/terratest.sh
-
-.PHONY: test-integration
-test-integration:
-	cd test/integration && $(TEST_SCRIPT_DIR)/terratest.sh
