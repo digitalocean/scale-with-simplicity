@@ -14,6 +14,26 @@ resource "kubernetes_manifest" "namespace" {
   manifest = yamldecode(file("${path.module}/../../k8s/namespace.yaml"))
 }
 
+# GPU Network Tuner — tunes MTU/sysctl on GPU nodes and removes the
+# node.digitalocean.com/network-not-tuned taint so vLLM pods can schedule.
+resource "kubernetes_manifest" "gpu_network_tuner_sa" {
+  manifest = yamldecode(file("${path.module}/../../k8s/gpu-network-tuner-sa.yaml"))
+}
+
+resource "kubernetes_manifest" "gpu_network_tuner_role" {
+  manifest = yamldecode(file("${path.module}/../../k8s/gpu-network-tuner-role.yaml"))
+}
+
+resource "kubernetes_manifest" "gpu_network_tuner_binding" {
+  manifest   = yamldecode(file("${path.module}/../../k8s/gpu-network-tuner-binding.yaml"))
+  depends_on = [kubernetes_manifest.gpu_network_tuner_sa, kubernetes_manifest.gpu_network_tuner_role]
+}
+
+resource "kubernetes_manifest" "gpu_network_tuner_ds" {
+  manifest   = yamldecode(file("${path.module}/../../k8s/gpu-network-tuner-ds.yaml"))
+  depends_on = [kubernetes_manifest.gpu_network_tuner_binding]
+}
+
 # 2. PersistentVolume using NFS from Stack 1
 resource "kubernetes_manifest" "pv" {
   manifest = yamldecode(templatefile("${path.module}/../../k8s/pv.yaml", {

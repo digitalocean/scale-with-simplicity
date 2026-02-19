@@ -69,6 +69,11 @@ resource "digitalocean_kubernetes_node_pool" "gpu" {
   size       = "gpu-h100x1-80gb"
   node_count = var.gpu_node_count
   tags       = local.tags
+  taint {
+    key    = "node.digitalocean.com/network-not-tuned"
+    value  = ""
+    effect = "NoSchedule"
+  }
 }
 
 # NFS share for storing LLM model files.
