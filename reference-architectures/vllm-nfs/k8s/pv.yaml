@@ -13,6 +13,8 @@ spec:
   accessModes:
     - ReadWriteMany
   persistentVolumeReclaimPolicy: Retain
+  mountOptions:
+    - nconnect=8
   nfs:
     server: ${nfs_host}
     path: ${nfs_mount_path}
