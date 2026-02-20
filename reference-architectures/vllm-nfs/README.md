@@ -86,6 +86,7 @@ flowchart TB
    * **GPU Node Pool**: H100 single-GPU droplets (`gpu-h100x1-80gb`) for vLLM inference
 
 3. **vLLM Deployment**
+   * **GPU Network Tuner**: DaemonSet that optimizes NFS throughput on GPU nodes (jumbo frames, TCP buffer tuning) before workloads schedule
    * **vLLM Workers**: Replicas running on H100 GPUs, serving your configured model
    * **Gateway API**: Cilium Gateway providing internet-accessible inference endpoints
 
