@@ -1,3 +1,5 @@
+# ServiceAccount for the gpu-network-tuner DaemonSet.
+# Grants the DaemonSet an identity to make Kubernetes API calls (removing node taints).
 apiVersion: v1
 kind: ServiceAccount
 metadata:

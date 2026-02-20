@@ -108,6 +108,39 @@ Using DigitalOcean Managed NFS for storing LLM model files provides significant 
 | **ReadWriteMany Access** | NFS supports concurrent read access from all GPU nodes, unlike block storage which is typically ReadWriteOnce.                     |
 | **Managed Service Benefits** | DigitalOcean handles NFS infrastructure, backups, and availability. No self-managed NFS servers to maintain.                       |
 
+## GPU Network Tuner
+
+### Why Network Tuning Is Needed
+
+Default DOKS worker nodes use a 1500-byte MTU and conservative kernel TCP buffer sizes. For typical workloads this is fine, but NFS throughput — especially for large sequential reads like loading LLM model weights — benefits significantly from two node-level optimizations:
+
+| Optimization | Default | Tuned | Why It Matters |
+|--------------|---------|-------|----------------|
+| **MTU (eth1)** | 1500 bytes | 9000 bytes (jumbo frames) | Reduces per-packet overhead for large transfers. GPU Droplets support jumbo frames on the private network interface. |
+| **TCP buffer sizes** | Conservative kernel defaults | 16 MB max (`rmem_max`, `wmem_max`, `tcp_rmem`, `tcp_wmem`) | Allows the kernel to fully utilize available bandwidth for high-throughput NFS reads. |
+
+> **Note:** Only GPU Droplets support jumbo frames. Setting MTU above 1500 on non-GPU Droplets is not supported.
+
+The `nconnect=8` NFS mount option (configured on the PersistentVolume) complements these node-level changes by opening multiple TCP connections per mount, further increasing aggregate throughput.
+
+### How It Works
+
+A DaemonSet called `gpu-network-tuner` runs on every GPU node in the cluster. It uses an init container to apply the network optimizations at the host level, then a second init container to remove the node taint so workload pods can schedule.
+
+The sequence on each GPU node is:
+
+1. Node joins the cluster with taint `node.digitalocean.com/network-not-tuned:NoSchedule` (configured on the GPU node pool in Stack 1)
+2. The DaemonSet pod schedules (it tolerates this taint; workload pods do not)
+3. The `network-tuner` init container sets MTU to 9000 on eth1, increases TCP buffer sysctls, and persists both via netplan and sysctl.d
+4. The `remove-taint` init container removes the `network-not-tuned` taint from the node
+5. With the taint removed, workload pods (vLLM, model-download) can now schedule on the node
+
+### Why the Taint Is Necessary
+
+Without the taint, there is a race condition: if a workload pod mounts NFS **before** the DaemonSet tunes the network, TCP's Maximum Segment Size (MSS) is negotiated at 1500 bytes during the handshake and is never renegotiated. NFS throughput remains degraded for the lifetime of that mount, even after the DaemonSet later sets the MTU to 9000.
+
+The taint acts as a synchronization mechanism, guaranteeing that network tuning always completes before any NFS-backed workload runs on a node. This is especially important when the cluster autoscaler provisions new GPU nodes, since both the DaemonSet pod and workload pods become schedulable simultaneously.
+
 ## Prerequisites
 
 * DigitalOcean account with H100 GPU quota in a region with both GPUs and Managed NFS (e.g. NYC2 or ATL1)
@@ -170,12 +203,13 @@ doctl kubernetes cluster kubeconfig save $(terraform output -raw cluster_name)
 Stack 2 reads outputs from Stack 1 via `terraform_remote_state` and deploys all Kubernetes resources:
 
 1. Creates the `vllm` namespace
-2. Configures NFS PersistentVolume using `nfs_host` and `nfs_mount_path` from Stack 1
-3. Creates PersistentVolumeClaim bound to the NFS PV
-4. (Optional) Creates Kubernetes secret with your HuggingFace token if provided
-5. Runs a Job to download the model to NFS (waits for completion)
-6. Deploys vLLM on GPU nodes
-7. Creates ClusterIP service and Gateway API resources for external access
+2. Deploys the GPU Network Tuner DaemonSet and RBAC resources (optimizes NFS throughput on GPU nodes and removes the scheduling taint)
+3. Configures NFS PersistentVolume using `nfs_host` and `nfs_mount_path` from Stack 1
+4. Creates PersistentVolumeClaim bound to the NFS PV
+5. (Optional) Creates Kubernetes secret with your HuggingFace token if provided
+6. Runs a Job to download the model to NFS (waits for completion)
+7. Deploys vLLM on GPU nodes
+8. Creates ClusterIP service and Gateway API resources for external access
 
 ```bash
 cd ../2-vllm
@@ -408,6 +442,31 @@ With the HA configuration deployed, you can validate zero-downtime behavior:
 ```bash
 kubectl get nodes -l doks.digitalocean.com/node-pool=<gpu-node-pool-name>
 kubectl describe node <gpu-node-name> | grep -A5 "Allocatable:"
+```
+
+### GPU Network Tuner Not Removing Taint
+
+**Symptom**: vLLM pods stuck in `Pending` with a taint-related scheduling error, even though GPU nodes are available.
+
+**Solution**: Check if the gpu-network-tuner DaemonSet pods are running and their init containers completed:
+```bash
+kubectl get ds gpu-network-tuner -n kube-system
+kubectl get pods -n kube-system -l app=gpu-network-tuner -o wide
+kubectl logs -n kube-system -l app=gpu-network-tuner -c network-tuner
+kubectl logs -n kube-system -l app=gpu-network-tuner -c remove-taint
+```
+
+Verify the taint has been removed from GPU nodes:
+```bash
+kubectl get nodes -l doks.digitalocean.com/gpu-brand=nvidia \
+  -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.taints}{"\n"}{end}'
+```
+
+If the taint persists, the `remove-taint` init container may have failed. Check RBAC resources are deployed:
+```bash
+kubectl get sa gpu-network-tuner -n kube-system
+kubectl get clusterrole gpu-network-tuner
+kubectl get clusterrolebinding gpu-network-tuner
 ```
 
 ### Model Download Job Fails

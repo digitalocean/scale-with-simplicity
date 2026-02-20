@@ -1,3 +1,7 @@
+# DaemonSet that optimizes NFS throughput on GPU nodes by enabling jumbo frames
+# (9000-byte MTU) and increasing TCP buffer sizes. After tuning, removes the
+# node.digitalocean.com/network-not-tuned taint so workload pods can schedule.
+# See the "GPU Network Tuner" section in the README for details.
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:

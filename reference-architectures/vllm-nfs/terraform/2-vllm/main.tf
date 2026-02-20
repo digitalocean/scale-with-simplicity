@@ -16,6 +16,7 @@ resource "kubernetes_manifest" "namespace" {
 
 # GPU Network Tuner — tunes MTU/sysctl on GPU nodes and removes the
 # node.digitalocean.com/network-not-tuned taint so vLLM pods can schedule.
+# See the "GPU Network Tuner" section in the README for the full rationale.
 resource "kubernetes_manifest" "gpu_network_tuner_sa" {
   manifest = yamldecode(file("${path.module}/../../k8s/gpu-network-tuner-sa.yaml"))
 }
