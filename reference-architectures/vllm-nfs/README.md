@@ -28,6 +28,7 @@ flowchart TB
 
                     subgraph GPUPool["GPU Node Pool (H100)"]
                         direction LR
+                        NetworkTuner["GPU Network Tuner<br/>(DaemonSet)"]
                         Gateway["Cilium Gateway"]
                         vLLMWorker1["vLLM Worker"]
                         vLLMWorker2["vLLM Worker"]
@@ -67,6 +68,7 @@ flowchart TB
     style Internet fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
     style HuggingFace fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
     style DownloadJob fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
+    style NetworkTuner fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
     style Gateway fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
     style vLLMWorker1 fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
     style vLLMWorker2 fill:#F3F5F9,stroke:#0069FF,stroke-width:2px
