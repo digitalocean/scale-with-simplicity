@@ -62,13 +62,24 @@ resource "digitalocean_kubernetes_cluster" "vllm" {
   }
 }
 
-# GPU node pool for vLLM workers running on H100 GPUs
+# GPU node pool for vLLM workers running on H100 GPUs.
+# Tainted at creation to ensure network tuning completes before workloads schedule.
 resource "digitalocean_kubernetes_node_pool" "gpu" {
   cluster_id = digitalocean_kubernetes_cluster.vllm.id
   name       = "${var.name_prefix}-gpu-h100"
   size       = "gpu-h100x1-80gb"
   node_count = var.gpu_node_count
   tags       = local.tags
+
+  # Prevents workload pods from scheduling until the gpu-network-tuner DaemonSet
+  # applies network optimizations (jumbo frames, TCP buffer tuning) and removes
+  # this taint. Without it, NFS mounts may negotiate a 1500-byte MSS that persists
+  # for the lifetime of the connection, degrading throughput.
+  taint {
+    key    = "node.digitalocean.com/network-not-tuned"
+    value  = ""
+    effect = "NoSchedule"
+  }
 }
 
 # NFS share for storing LLM model files.
