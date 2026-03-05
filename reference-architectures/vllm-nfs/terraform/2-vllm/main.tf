@@ -71,8 +71,9 @@ resource "kubernetes_manifest" "hf_secret" {
 # 5. Job to download the model from HuggingFace to NFS
 resource "kubernetes_manifest" "model_download_job" {
   manifest = yamldecode(templatefile("${path.module}/../../k8s/model-download-job.yaml", {
-    model_id   = var.model_id
-    model_name = local.model_name
+    model_id           = var.model_id
+    model_name         = local.model_name
+    gpu_node_pool_name = local.gpu_node_pool_name
   }))
 
   wait {

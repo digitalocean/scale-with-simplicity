@@ -8,6 +8,12 @@ spec:
   template:
     spec:
       restartPolicy: Never
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      nodeSelector:
+        doks.digitalocean.com/node-pool: ${gpu_node_pool_name}
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000
