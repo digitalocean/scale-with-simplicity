@@ -1,5 +1,5 @@
 # ClusterRole granting get/patch access to node objects.
-# Required so the gpu-network-tuner can remove the network-not-tuned taint after tuning.
+# Required so the gpu-network-tuner can label nodes after tuning.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:

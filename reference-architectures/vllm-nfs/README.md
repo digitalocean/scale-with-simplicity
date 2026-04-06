@@ -26,7 +26,7 @@ flowchart TB
                         DownloadJob["Download Job"]
                     end
 
-                    subgraph GPUPool["GPU Node Pool (H100)"]
+                    subgraph GPUPool["GPU Node Pool (H200)"]
                         direction LR
                         NetworkTuner["GPU Network Tuner<br/>(DaemonSet)"]
                         Gateway["Cilium Gateway"]
@@ -76,18 +76,18 @@ flowchart TB
 ```
 
 1. **DigitalOcean VPC**
-   * Deployed in a region with both H100 GPUs and Managed NFS (currently **NYC2** or **ATL1**)
+   * Deployed in a region with both H200 GPUs and Managed NFS (currently **NYC2**)
    * A VPC containing all resources with private networking
    * **DOKS Cluster** with management and GPU node pools
    * **Managed NFS Share** for shared model storage
 
 2. **DOKS Cluster**
    * **Management Node Pool**: Auto-scaling basic droplets for system services
-   * **GPU Node Pool**: H100 single-GPU droplets (`gpu-h100x1-80gb`) for vLLM inference
+   * **GPU Node Pool**: H200 single-GPU droplets (`gpu-h200x1-141gb`) for vLLM inference
 
 3. **vLLM Deployment**
-   * **GPU Network Tuner**: DaemonSet that optimizes NFS throughput on GPU nodes (jumbo frames, TCP buffer tuning) before workloads schedule
-   * **vLLM Workers**: Replicas running on H100 GPUs, serving your configured model
+   * **GPU Network Tuner**: DaemonSet that optimizes NFS throughput on GPU nodes (jumbo frames, TCP buffer tuning) and labels nodes once tuning is complete so workloads can schedule
+   * **vLLM Workers**: Replicas running on H200 GPUs, serving your configured model
    * **Gateway API**: Cilium Gateway providing internet-accessible inference endpoints
 
 ## Default Model
@@ -128,25 +128,27 @@ The `nconnect=8` NFS mount option (configured on the PersistentVolume) complemen
 
 ### How It Works
 
-A DaemonSet called `gpu-network-tuner` runs on every GPU node in the cluster. It uses an init container to apply the network optimizations at the host level, then a second init container to remove the node taint so workload pods can schedule.
+A DaemonSet called `gpu-network-tuner` runs on every GPU node in the cluster. It uses an init container to apply the network optimizations at the host level, then a second init container to label the node so workload pods with a matching `nodeSelector` can schedule.
 
 The sequence on each GPU node is:
 
-1. Node joins the cluster with taint `node.digitalocean.com/network-not-tuned:NoSchedule` (configured on the GPU node pool in Stack 1)
-2. The DaemonSet pod schedules (it tolerates this taint; workload pods do not)
+1. A new GPU node joins the cluster
+2. The DaemonSet pod schedules on the node (via node affinity on the `doks.digitalocean.com/gpu-brand` label)
 3. The `network-tuner` init container sets MTU to 9000 on eth1, increases TCP buffer sysctls, and persists both via netplan and sysctl.d
-4. The `remove-taint` init container removes the `network-not-tuned` taint from the node
-5. With the taint removed, workload pods (vLLM, model-download) can now schedule on the node
+4. The `label-node` init container labels the node with `node.digitalocean.com/network-tuned=true`
+5. Workload pods (vLLM, model-download) have a `nodeSelector` requiring this label, so they only schedule once tuning is complete
 
-### Why the Taint Is Necessary
+### Why the Label Is Necessary
 
-Without the taint, there is a race condition: if a workload pod mounts NFS **before** the DaemonSet tunes the network, TCP's Maximum Segment Size (MSS) is negotiated at 1500 bytes during the handshake and is never renegotiated. NFS throughput remains degraded for the lifetime of that mount, even after the DaemonSet later sets the MTU to 9000.
+Without the label-based synchronization, there is a race condition: if a workload pod mounts NFS **before** the DaemonSet tunes the network, TCP's Maximum Segment Size (MSS) is negotiated at 1500 bytes during the handshake and is never renegotiated. NFS throughput remains degraded for the lifetime of that mount, even after the DaemonSet later sets the MTU to 9000.
 
-The taint acts as a synchronization mechanism, guaranteeing that network tuning always completes before any NFS-backed workload runs on a node. This is especially important when the cluster autoscaler provisions new GPU nodes, since both the DaemonSet pod and workload pods become schedulable simultaneously.
+The label and `nodeSelector` act as a synchronization mechanism, guaranteeing that network tuning always completes before any NFS-backed workload runs on a node. This is especially important when the cluster autoscaler provisions new GPU nodes, since both the DaemonSet pod and workload pods become schedulable simultaneously.
+
+> **Note:** Using a node pool taint to block scheduling is not effective for this purpose. Taints configured on a DOKS node pool are managed by the cloud controller and are re-applied during reconciliation cycles. Any taint that a DaemonSet removes will eventually be added back to the node, which can cause workload pods to be evicted unexpectedly.
 
 ## Prerequisites
 
-* DigitalOcean account with H100 GPU quota in a region with both GPUs and Managed NFS (e.g. NYC2 or ATL1)
+* DigitalOcean account with H200 GPU quota in a region with both GPUs and Managed NFS (e.g. NYC2)
 * Terraform v1.2+ installed with DigitalOcean provider version supporting NFS `host` and `mount_path` attributes
 * `kubectl` CLI installed
 * `doctl` CLI configured with API token
@@ -170,7 +172,7 @@ First, create a `terraform.tfvars` file with your configuration:
 
 ```hcl
 name_prefix         = "my-vllm"
-region              = "nyc2"  # Must be a region with both H100 GPUs and Managed NFS
+region              = "nyc2"  # Must be a region with both H200 GPUs and Managed NFS
 vpc_cidr            = "10.200.0.0/22"
 doks_cluster_subnet = "172.16.0.0/20"
 doks_service_subnet = "192.168.0.0/22"
@@ -206,7 +208,7 @@ doctl kubernetes cluster kubeconfig save $(terraform output -raw cluster_name)
 Stack 2 reads outputs from Stack 1 via `terraform_remote_state` and deploys all Kubernetes resources:
 
 1. Creates the `vllm` namespace
-2. Deploys the GPU Network Tuner DaemonSet and RBAC resources (optimizes NFS throughput on GPU nodes and removes the scheduling taint)
+2. Deploys the GPU Network Tuner DaemonSet and RBAC resources (optimizes NFS throughput on GPU nodes and labels them once tuning is complete)
 3. Configures NFS PersistentVolume using `nfs_host` and `nfs_mount_path` from Stack 1
 4. Creates PersistentVolumeClaim bound to the NFS PV
 5. (Optional) Creates Kubernetes secret with your HuggingFace token if provided
@@ -240,7 +242,7 @@ kubectl get pods -n vllm -o wide
 Expected output shows vLLM pod running on GPU nodes:
 ```
 NAME                    READY   STATUS    RESTARTS   AGE   NODE
-vllm-xxx-xxx            1/1     Running   0          5m    vllm-test-gpu-h100-xxx
+vllm-xxx-xxx            1/1     Running   0          5m    vllm-test-gpu-h200-xxx
 ```
 
 Wait until it's Running to move on to the next step.
@@ -276,12 +278,12 @@ curl -s http://${GATEWAY_IP}/v1/chat/completions \
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|----------|
 | `name_prefix` | Prefix for all resource names | `string` | n/a | yes |
-| `region` | DigitalOcean region (must have H100 GPUs and Managed NFS) | `string` | n/a | yes |
+| `region` | DigitalOcean region (must have H200 GPUs and Managed NFS) | `string` | n/a | yes |
 | `vpc_cidr` | CIDR block for VPC | `string` | n/a | yes |
 | `doks_cluster_subnet` | CIDR block for DOKS cluster subnet | `string` | n/a | yes |
 | `doks_service_subnet` | CIDR block for DOKS service subnet | `string` | n/a | yes |
 | `nfs_size_gb` | Size of NFS share in GB for model storage | `number` | n/a | yes |
-| `gpu_node_count` | Number of H100 GPU nodes in the GPU node pool | `number` | `0` | no |
+| `gpu_node_count` | Number of H200 GPU nodes in the GPU node pool | `number` | `0` | no |
 | `doks_control_plane_ha` | Enable high availability for DOKS control plane | `bool` | `false` | no |
 | `management_node_pool_min_nodes` | Minimum nodes in management node pool | `number` | `2` | no |
 | `management_node_pool_max_nodes` | Maximum nodes in management node pool | `number` | `3` | no |
@@ -355,7 +357,7 @@ terraform apply -var="model_id=mistralai/Mistral-7B-Instruct-v0.3" -var="hf_toke
 ```
 
 **Important considerations when choosing a model:**
-- Ensure the model fits in GPU memory (H100 has 80GB VRAM)
+- Ensure the model fits in GPU memory (H200 has 141GB VRAM)
 - Larger models require more NFS storage space
 - Some models have specific licensing terms
 - Gated models require HuggingFace account approval before use
@@ -447,25 +449,24 @@ kubectl get nodes -l doks.digitalocean.com/node-pool=<gpu-node-pool-name>
 kubectl describe node <gpu-node-name> | grep -A5 "Allocatable:"
 ```
 
-### GPU Network Tuner Not Removing Taint
+### GPU Network Tuner Not Labeling Nodes
 
-**Symptom**: vLLM pods stuck in `Pending` with a taint-related scheduling error, even though GPU nodes are available.
+**Symptom**: vLLM pods stuck in `Pending` because nodes are missing the `network-tuned` label, even though GPU nodes are available.
 
 **Solution**: Check if the gpu-network-tuner DaemonSet pods are running and their init containers completed:
 ```bash
 kubectl get ds gpu-network-tuner -n kube-system
 kubectl get pods -n kube-system -l app=gpu-network-tuner -o wide
 kubectl logs -n kube-system -l app=gpu-network-tuner -c network-tuner
-kubectl logs -n kube-system -l app=gpu-network-tuner -c remove-taint
+kubectl logs -n kube-system -l app=gpu-network-tuner -c label-node
 ```
 
-Verify the taint has been removed from GPU nodes:
+Verify the label has been applied to GPU nodes:
 ```bash
-kubectl get nodes -l doks.digitalocean.com/gpu-brand=nvidia \
-  -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.taints}{"\n"}{end}'
+kubectl get nodes -l node.digitalocean.com/network-tuned=true
 ```
 
-If the taint persists, the `remove-taint` init container may have failed. Check RBAC resources are deployed:
+If the label is missing, the `label-node` init container may have failed. Check RBAC resources are deployed:
 ```bash
 kubectl get sa gpu-network-tuner -n kube-system
 kubectl get clusterrole gpu-network-tuner

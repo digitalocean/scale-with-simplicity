@@ -30,6 +30,7 @@ spec:
           effect: NoSchedule
       nodeSelector:
         doks.digitalocean.com/node-pool: ${gpu_node_pool_name}
+        node.digitalocean.com/network-tuned: "true"
       # Pod anti-affinity ensures each replica runs on a different node.
       # requiredDuringScheduling is a hard constraint - pods will remain
       # Pending if insufficient nodes are available.

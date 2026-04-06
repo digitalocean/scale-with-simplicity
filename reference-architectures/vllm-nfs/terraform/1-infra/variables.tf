@@ -5,7 +5,7 @@ variable "name_prefix" {
 
 variable "region" {
   type        = string
-  description = "DigitalOcean region for deployment (must have H100 GPU Droplets and Managed NFS)"
+  description = "DigitalOcean region for deployment (must have H200 GPU Droplets and Managed NFS)"
 }
 
 variable "vpc_cidr" {
@@ -32,7 +32,7 @@ variable "nfs_size_gb" {
 variable "gpu_node_count" {
   type        = number
   default     = 0
-  description = "Number of H100 GPU nodes in the GPU node pool"
+  description = "Number of H200 GPU nodes in the GPU node pool"
 }
 
 variable "doks_control_plane_ha" {
