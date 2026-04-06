@@ -88,6 +88,11 @@ spec:
         image: busybox:stable
         command: ["/bin/sh", "-c"]
         args: ["/host-bin/kubectl label nodes $(NODE_NAME) node.digitalocean.com/network-tuned=true --overwrite"]
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
         volumeMounts:
         - name: host-kubectl
           mountPath: /host-bin/kubectl
@@ -101,6 +106,11 @@ spec:
       - name: pause
         image: busybox:stable
         command: ["sleep", "infinity"]
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
         resources:
           requests:
             cpu: 1m
