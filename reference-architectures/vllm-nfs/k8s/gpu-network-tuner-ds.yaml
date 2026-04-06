@@ -1,7 +1,7 @@
 # DaemonSet that optimizes NFS throughput on GPU nodes by enabling jumbo frames
-# (9000-byte MTU) and increasing TCP buffer sizes. After tuning, removes the
-# node.digitalocean.com/network-not-tuned taint so workload pods can schedule.
-# See the "GPU Network Tuner" section in the README for details.
+# (9000-byte MTU) and increasing TCP buffer sizes. After tuning, labels the node
+# with node.digitalocean.com/network-tuned=true so workload pods with a matching
+# nodeSelector can schedule. See the "GPU Network Tuner" section in the README.
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -33,10 +33,6 @@ spec:
         operator: Exists
         effect: NoSchedule
       - key: nvidia.com/gpu
-        operator: Exists
-        effect: NoSchedule
-      # Tolerate the custom network-not-ready taint
-      - key: node.digitalocean.com/network-not-tuned
         operator: Exists
         effect: NoSchedule
       hostNetwork: true
@@ -88,10 +84,10 @@ spec:
           echo "=== Network tuning complete ==="
         securityContext:
           privileged: true
-      - name: remove-taint
+      - name: label-node
         image: busybox:stable
         command: ["/bin/sh", "-c"]
-        args: ["/host-bin/kubectl taint nodes $(NODE_NAME) node.digitalocean.com/network-not-tuned:NoSchedule- || true"]
+        args: ["/host-bin/kubectl label nodes $(NODE_NAME) node.digitalocean.com/network-tuned=true --overwrite"]
         volumeMounts:
         - name: host-kubectl
           mountPath: /host-bin/kubectl
